@@ -23,11 +23,20 @@
 .scaleLegend{padding:18px 24px;background:#fbfcfe;border-bottom:1px solid var(--line)}.scaleLegend h4{margin:0 0 12px;color:var(--navy2);font-size:13px}.scaleGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.scaleItem{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px}.scaleStars{color:#bd8a00;font-size:12px}.scaleItem b{display:block;font-size:10px;color:var(--navy2);margin:5px 0 3px}.scaleItem span{display:block;font-size:9px;color:var(--muted);line-height:1.35}
 .textarea{width:100%;min-height:82px;border:1px solid #d7dde7;border-radius:12px;padding:12px;resize:vertical;margin-top:6px}.openLabel{font-size:12px;font-weight:700;color:#344054;margin-top:16px}.footer{padding:18px 24px;display:flex;justify-content:space-between;align-items:center;gap:10px}.donebox{display:none;text-align:center;padding:36px}.check{width:60px;height:60px;border-radius:50%;margin:0 auto 12px;display:grid;place-items:center;background:var(--greenbg);color:var(--green);font-size:28px;font-weight:900}
 .toast{display:none;position:fixed;right:22px;bottom:22px;background:var(--navy2);color:#fff;padding:13px 17px;border-radius:12px;z-index:20;box-shadow:0 10px 32px #0003}
-@media(max-width:900px){.flow,.summary{grid-template-columns:1fr 1fr}.survey-layout{grid-template-columns:1fr}.side{position:static}.scaleGrid{grid-template-columns:1fr 1fr}.hero{grid-template-columns:1fr}.hero-side{grid-template-columns:repeat(3,1fr)}}@media(max-width:620px){.flow,.summary,.scaleGrid,.hero-side{grid-template-columns:1fr}.question{grid-template-columns:1fr}.top{padding:10px 16px}.shell{padding:0 12px}.section-title{align-items:flex-start;flex-direction:column}.top-actions{flex-wrap:wrap;justify-content:flex-end}}
+.module-tabs{display:flex;gap:6px;margin:0 0 18px;padding:5px;background:#eaf0f6;border:1px solid #dbe4ee;border-radius:14px;width:max-content;max-width:100%}.module-tab{border:0;background:transparent;color:#526174;padding:10px 16px;border-radius:10px;font-size:11px;font-weight:850;cursor:pointer}.module-tab.active{background:#fff;color:var(--navy);box-shadow:0 3px 10px rgba(13,31,55,.08)}
+.results-view{display:none}.results-hero{padding:26px;display:grid;grid-template-columns:1fr auto;gap:22px;align-items:center}.result-score{min-width:150px;text-align:center;padding:18px 22px;border-radius:18px;background:var(--navy);color:#fff}.result-score b{display:block;font-size:42px;line-height:1}.result-score span{display:block;font-size:10px;margin-top:7px;opacity:.82;text-transform:uppercase;font-weight:800}.result-score small{display:inline-flex;margin-top:9px;padding:5px 9px;border-radius:999px;background:#ffffff1d;font-size:9px;font-weight:800}
+.source-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}.source-card{padding:18px}.source-card .source-label{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:850;letter-spacing:.06em}.source-card b{display:block;font-size:26px;color:var(--navy);margin:6px 0 2px}.source-card span{font-size:10px;color:var(--muted)}
+.results-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;margin-top:16px}.result-panel{padding:22px}.result-panel h3{margin:0 0 14px;color:var(--navy2);font-size:16px}.dimension-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}.dimension-row:first-of-type{border-top:0}.dimension-row strong{font-size:12px}.score-chip{min-width:48px;text-align:center;padding:6px 8px;border-radius:9px;background:var(--bluebg);color:var(--navy);font-size:11px;font-weight:900}
+.feedback-list{display:grid;gap:10px}.feedback-item{padding:14px;border:1px solid var(--line);border-radius:13px;background:#fbfcfe}.feedback-item .feedback-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.feedback-item b{font-size:11px;color:var(--navy2)}.feedback-item small{display:block;color:var(--muted);font-size:9px;margin-top:2px}.feedback-item p{font-size:10px;line-height:1.45;color:#475467;margin:10px 0 0}.released-badge{display:inline-flex;padding:6px 9px;border-radius:999px;background:var(--greenbg);color:var(--green);font-size:9px;font-weight:850}.locked-results{text-align:center;padding:48px 24px}.locked-icon{width:54px;height:54px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:#f2f4f7;color:#667085;font-size:23px}.locked-results h2{margin:0 0 8px;color:var(--navy2)}
+@media(max-width:900px){.flow,.summary{grid-template-columns:1fr 1fr}.results-grid{grid-template-columns:1fr}.source-grid{grid-template-columns:1fr 1fr}.results-hero{grid-template-columns:1fr}.survey-layout{grid-template-columns:1fr}.side{position:static}.scaleGrid{grid-template-columns:1fr 1fr}.hero{grid-template-columns:1fr}.hero-side{grid-template-columns:repeat(3,1fr)}}@media(max-width:620px){.flow,.summary,.scaleGrid,.hero-side,.source-grid{grid-template-columns:1fr}.module-tabs{width:100%}.module-tab{flex:1}.result-score{width:100%}.question{grid-template-columns:1fr}.top{padding:10px 16px}.shell{padding:0 12px}.section-title{align-items:flex-start;flex-direction:column}.top-actions{flex-wrap:wrap;justify-content:flex-end}}
 </style></head>
 <body>
 <header class="top"><div class="brand"><img src="assets/logo-ic-blanco-horizontal.png" alt="Inter-Con"><div><strong>Evaluación de Desempeño</strong><span>Evaluación 360°</span></div></div><div class="top-actions"><a class="toplink" id="backToEdd" href="index.html">← Volver a EDD</a><div class="profile-chip"><span class="avatar" id="profileInitials">IC</span><span><strong id="profileName">Usuario INTER-CON</strong><small id="profileMeta">Evaluación 360°</small></span></div></div></header>
 <main class="shell">
+<nav class="module-tabs" aria-label="Evaluación 360°">
+  <button class="module-tab active" id="tabAssignments" type="button">Mis evaluaciones</button>
+  <button class="module-tab" id="tabResults" type="button">Mis resultados</button>
+</nav>
 <section id="assignmentView">
   <div class="card hero"><div><div class="eyebrow">Mi evaluación 360°</div><h1>Tus evaluaciones 360° están listas</h1><p class="lead">Completa las cuatro evaluaciones asignadas para este ciclo. Las personas se asignan automáticamente, excluyen tu propia área y se distribuyen de forma equitativa para que todos los líderes reciban el mismo número de evaluaciones.</p></div><div class="hero-side"><div class="kpi"><b>4</b><span>Asignaciones</span></div><div class="kpi"><b>0</b><span>Área propia</span></div><div class="kpi"><b>1</b><span>Solo envío</span></div></div></div>
   <div class="notice"><strong>Importante:</strong> responde con objetividad y considera únicamente interacciones laborales que hayas observado directamente. Una vez enviada una evaluación, ya no podrá modificarse.</div>
@@ -35,6 +44,61 @@
   <div class="section-title"><h2>Tus evaluaciones del ciclo</h2><span>Asignación automática balanceada</span></div>
   <div class="progressSummary"><span class="pill" id="donePill">0 de 4 completadas</span><span class="pill" id="pendingPill">4 pendientes</span></div>
   <section class="summary" id="summary"></section>
+</section>
+
+<section class="results-view" id="resultsView">
+  <div id="resultsReleased">
+    <div class="card results-hero">
+      <div>
+        <div class="eyebrow">Mi resultado 360°</div>
+        <h1 id="resultPersonName">Tu resultado 360°</h1>
+        <p class="lead" id="resultPersonMeta">Resultado personal del ciclo · consolidado de autoevaluación, jefe directo y clientes internos.</p>
+        <span class="released-badge">Resultados liberados</span>
+      </div>
+      <div class="result-score"><b>3.84</b><span>Resultado global</span><small>Destacado</small></div>
+    </div>
+
+    <div class="source-grid">
+      <article class="card source-card"><div class="source-label">Autoevaluación</div><b>4.20</b><span>Tu propia percepción</span></article>
+      <article class="card source-card"><div class="source-label">Jefe directo</div><b>3.90</b><span>Evaluación de tu líder</span></article>
+      <article class="card source-card"><div class="source-label">Clientes internos</div><b>3.71</b><span>Promedio de 4 evaluaciones</span></article>
+    </div>
+
+    <div class="results-grid">
+      <section class="card result-panel">
+        <div class="section-title" style="margin:0 0 8px"><h2>Resultado por dimensión</h2><span>Escala 1 a 5</span></div>
+        <div class="dimension-row"><strong>Resultados y orientación al negocio</strong><span class="score-chip">4.10</span></div>
+        <div class="dimension-row"><strong>Liderazgo</strong><span class="score-chip">3.65</span></div>
+        <div class="dimension-row"><strong>Comunicación y colaboración</strong><span class="score-chip">3.90</span></div>
+        <div class="dimension-row"><strong>Toma de decisiones y mejora</strong><span class="score-chip">3.70</span></div>
+      </section>
+
+      <section class="card result-panel">
+        <div class="section-title" style="margin:0 0 8px"><h2>Cómo me evaluaron</h2><span>Clientes internos</span></div>
+        <div class="feedback-list">
+          <article class="feedback-item"><div class="feedback-head"><div><b>Maricela Fragoso Prado</b><small>Finanzas</small></div><span class="score-chip">3.8</span></div><p>Fortaleza: seguimiento y orientación a resultados.</p></article>
+          <article class="feedback-item"><div class="feedback-head"><div><b>Mónica Evangelina Martínez Sánchez</b><small>Legal</small></div><span class="score-chip">4.1</span></div><p>Fortaleza: comunicación clara y disposición para colaborar.</p></article>
+          <article class="feedback-item"><div class="feedback-head"><div><b>José Ricardo Zamora Acosta</b><small>Logística</small></div><span class="score-chip">3.6</span></div><p>Oportunidad: fortalecer la anticipación y priorización en temas compartidos.</p></article>
+          <article class="feedback-item"><div class="feedback-head"><div><b>Diana López Zúñiga</b><small>QSHE + Mantenimiento</small></div><span class="score-chip">3.7</span></div><p>Continuar: colaboración interáreas y seguimiento puntual.</p></article>
+        </div>
+      </section>
+    </div>
+
+    <section class="card result-panel" style="margin-top:16px">
+      <div class="section-title" style="margin:0 0 8px"><h2>Retroalimentación cualitativa</h2><span>Comentarios consolidados</span></div>
+      <div class="results-grid" style="margin-top:0">
+        <div><div class="eyebrow">Principal fortaleza</div><p class="lead">Mantiene enfoque en resultados, seguimiento y coordinación efectiva con otras áreas.</p></div>
+        <div><div class="eyebrow">Aspecto a desarrollar</div><p class="lead">Fortalecer la priorización y comunicación anticipada cuando existen dependencias entre equipos.</p></div>
+      </div>
+      <div style="margin-top:14px"><div class="eyebrow">Qué debería continuar haciendo</div><p class="lead">Conservar la apertura para colaborar, dar seguimiento a compromisos y mantener claridad en las expectativas.</p></div>
+    </section>
+  </div>
+
+  <div class="card locked-results" id="resultsLocked" style="display:none">
+    <div class="locked-icon">🔒</div>
+    <h2>Resultados aún no disponibles</h2>
+    <p class="lead" style="margin:auto">Tus resultados estarán disponibles cuando concluya el ejercicio 360° y sean liberados por Desarrollo Organizacional.</p>
+  </div>
 </section>
 
 <section class="survey" id="survey">
@@ -47,6 +111,7 @@
 </main><div class="toast" id="toast"></div>
 <script>
 const STORAGE_KEY='edd360DevPreviewV4';
+const RESULTS_RELEASED=true; // Vista frontend desconectada; backend decidirá este estado al integrarse.
 const catalog=[
 ['ventas-daniela','Ventas','Daniela Fernanda Juárez Martínez','Gerente Nacional de Desarrollo de Negocios','Ventas'],
 ['legal-monica','Legal','Mónica Evangelina Martínez Sánchez','Abogado Corporativo','Legal'],
@@ -74,11 +139,25 @@ try{scores=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){scores={
 function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(scores))}
 function counters(){const total=assignments.length;const d=assignments.filter(a=>scores[a[0]]?.done).length;donePill.textContent=`${d} de ${total} completadas`;donePill.classList.toggle('done',d===total);pendingPill.textContent=`${total-d} pendientes`}
 function render(){summary.innerHTML=assignments.map((a,i)=>{const d=!!scores[a[0]]?.done;return `<article class="card assignment ${d?'completed':''}"><span class="tag">Asignación automática</span>${d?'<span class="tag complete">Completada</span>':''}<div class="eyebrow" style="margin-top:14px">Área ${a[1]}</div><h3>${a[2]}</h3><div class="role">${a[3]}</div><div class="meta">Área 360: ${a[4]} · Asignación equitativa</div>${d?'<button class="btn locked" disabled>✓ Evaluación finalizada</button>':`<button class="btn primary open" data-i="${i}">Comenzar evaluación</button>`}</article>`}).join('');document.querySelectorAll('.open').forEach(b=>b.onclick=()=>openSurvey(+b.dataset.i));counters()}
-function openSurvey(i){current=assignments[i];if(scores[current[0]]?.done)return;assignmentView.style.display='none';survey.style.display='block';surveyArea.textContent=`Área ${current[1]}`;surveyPerson.innerHTML=`${current[2]}<br>${current[3]}`;surveyTitle.textContent=`Evaluación de ${current[2]}`;surveySub.textContent=`${current[3]} · Área ${current[1]}`;build();window.scrollTo(0,0)}
+function openSurvey(i){current=assignments[i];if(scores[current[0]]?.done)return;resultsView.style.display='none';assignmentView.style.display='none';survey.style.display='block';surveyArea.textContent=`Área ${current[1]}`;surveyPerson.innerHTML=`${current[2]}<br>${current[3]}`;surveyTitle.textContent=`Evaluación de ${current[2]}`;surveySub.textContent=`${current[3]} · Área ${current[1]}`;build();window.scrollTo(0,0)}
 function qrow(q,n){const v=scores[current[0]]?.vals?.[n]||0;return `<div class="question"><p>${q}</p><div class="stars" data-q="${n}">${[1,2,3,4,5].map(x=>`<button type="button" class="star ${x<=v?'active':''}" data-v="${x}" title="${x} · ${scale[x-1][0]}">★</button>`).join('')}</div></div>`}
 function build(){const k=current[0];scores[k]=scores[k]||{vals:{},done:false,open:{}};donebox.style.display='none';surveyBody.style.display='block';document.querySelector('.footer').style.display='flex';const legend=`<div class="scaleLegend"><h4>Escala de evaluación</h4><div class="scaleGrid">${scale.map((s,i)=>`<div class="scaleItem"><div class="scaleStars">${'★'.repeat(i+1)}</div><b>${s[0]}</b><span>${s[1]}</span></div>`).join('')}</div></div>`;let body=legend;['Resultados y orientación al negocio','Liderazgo','Comunicación y colaboración','Toma de decisiones y mejora'].forEach(dim=>{const rows=qs.map((x,i)=>({x,i})).filter(o=>o.x[0]===dim).map(o=>qrow(o.x[1],o.i+1)).join('');body+=`<div class="dimension"><div class="dim-title">${dim}</div>${rows}</div>`});body+=`<div class="dimension"><div class="dim-title">Preguntas abiertas</div><div class="openLabel">¿Cuál consideras que es su principal fortaleza?</div><textarea class="textarea" data-open="strength">${scores[k].open.strength||''}</textarea><div class="openLabel">¿Qué aspecto debería desarrollar o mejorar?</div><textarea class="textarea" data-open="improve">${scores[k].open.improve||''}</textarea><div class="openLabel">¿Qué debería continuar haciendo?</div><textarea class="textarea" data-open="continue">${scores[k].open.continue||''}</textarea></div>`;surveyBody.innerHTML=body;document.querySelectorAll('.stars').forEach(g=>g.querySelectorAll('.star').forEach(b=>b.onclick=()=>{scores[k].vals[+g.dataset.q]=+b.dataset.v;g.querySelectorAll('.star').forEach(s=>s.classList.toggle('active',+s.dataset.v<=+b.dataset.v));progress();save()}));document.querySelectorAll('[data-open]').forEach(t=>t.oninput=()=>{scores[k].open[t.dataset.open]=t.value;save()});progress()}
 function progress(){const k=current[0],n=Object.keys(scores[k].vals).filter(x=>scores[k].vals[x]>0).length;progressText.textContent=`${n} / 12`;fill.style.width=`${(n/12)*100}%`}
-function back(){survey.style.display='none';assignmentView.style.display='block';render();window.scrollTo(0,0)}
+function back(){survey.style.display='none';resultsView.style.display='none';assignmentView.style.display='block';tabAssignments.classList.add('active');tabResults.classList.remove('active');render();window.scrollTo(0,0)}
+function showModuleView(view){
+  survey.style.display='none';
+  assignmentView.style.display=view==='assignments'?'block':'none';
+  resultsView.style.display=view==='results'?'block':'none';
+  tabAssignments.classList.toggle('active',view==='assignments');
+  tabResults.classList.toggle('active',view==='results');
+  if(view==='results'){
+    resultsReleased.style.display=RESULTS_RELEASED?'block':'none';
+    resultsLocked.style.display=RESULTS_RELEASED?'none':'block';
+  }
+  window.scrollTo(0,0);
+}
+tabAssignments.onclick=()=>showModuleView('assignments');
+tabResults.onclick=()=>showModuleView('results');
 backBtn.onclick=back;doneBackBtn.onclick=back;
 finishBtn.onclick=()=>{const k=current[0],n=Object.keys(scores[k].vals).filter(x=>scores[k].vals[x]>0).length;if(n<12){toast.textContent=`Faltan ${12-n} reactivos por responder.`;toast.style.display='block';setTimeout(()=>toast.style.display='none',2200);return}scores[k].done=true;scores[k].completedAt=new Date().toISOString();save();surveyBody.style.display='none';document.querySelector('.footer').style.display='none';donebox.style.display='block'};
 function loadProfile(){
@@ -100,6 +179,10 @@ function loadProfile(){
     if(back) back.href=targetRoute;
     const initials=name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
     if(initials) profileInitials.textContent=initials;
+    const resultName=document.getElementById('resultPersonName');
+    const resultMeta=document.getElementById('resultPersonMeta');
+    if(resultName) resultName.textContent=name;
+    if(resultMeta) resultMeta.textContent=`${String(role).replace(/^./,m=>m.toUpperCase())} · Resultado personal del ciclo 360°`;
   }catch(e){}
 }
 if(new URLSearchParams(location.search).get('dev')==='1'){
@@ -110,5 +193,6 @@ if(new URLSearchParams(location.search).get('dev')==='1'){
   document.querySelector('.top-actions').prepend(b);
 }
 loadProfile();
+showModuleView('assignments');
 render();
 </script></body></html>
