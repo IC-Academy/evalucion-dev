@@ -29,11 +29,11 @@
 <header class="top"><div class="brand"><img src="assets/logo-ic-blanco-horizontal.png" alt="Inter-Con"><div><strong>Evaluación de Desempeño</strong><span>Evaluación 360°</span></div></div><div class="top-actions"><a class="toplink" id="backToEdd" href="index.html">← Volver a EDD</a><div class="profile-chip"><span class="avatar" id="profileInitials">IC</span><span><strong id="profileName">Usuario INTER-CON</strong><small id="profileMeta">Evaluación 360°</small></span></div></div></header>
 <main class="shell">
 <section id="assignmentView">
-  <div class="card hero"><div><div class="eyebrow">Mi evaluación 360°</div><h1>Tus evaluaciones 360° están listas</h1><p class="lead">Completa las tres evaluaciones asignadas para este ciclo. Las áreas se asignan automáticamente, excluyen tu propia área y se distribuyen de forma equilibrada entre los participantes.</p></div><div class="hero-side"><div class="kpi"><b>3</b><span>Asignaciones</span></div><div class="kpi"><b>0</b><span>Área propia</span></div><div class="kpi"><b>1</b><span>Solo envío</span></div></div></div>
+  <div class="card hero"><div><div class="eyebrow">Mi evaluación 360°</div><h1>Tus evaluaciones 360° están listas</h1><p class="lead">Completa las cuatro evaluaciones asignadas para este ciclo. Las personas se asignan automáticamente, excluyen tu propia área y se distribuyen de forma equitativa para que todos los líderes reciban el mismo número de evaluaciones.</p></div><div class="hero-side"><div class="kpi"><b>4</b><span>Asignaciones</span></div><div class="kpi"><b>0</b><span>Área propia</span></div><div class="kpi"><b>1</b><span>Solo envío</span></div></div></div>
   <div class="notice"><strong>Importante:</strong> responde con objetividad y considera únicamente interacciones laborales que hayas observado directamente. Una vez enviada una evaluación, ya no podrá modificarse.</div>
-  <section class="flow"><div class="card step"><div class="n">1</div><b>Recibes 3 evaluaciones</b><p>Las asignaciones son automáticas y nunca incluyen tu propia área.</p></div><div class="card step"><div class="n">2</div><b>Respondes cada evaluación</b><p>Escala de 1 a 5 más preguntas abiertas.</p></div><div class="card step"><div class="n">3</div><b>Se bloquea al finalizar</b><p>Una evaluación enviada ya no puede editarse.</p></div></section>
+  <section class="flow"><div class="card step"><div class="n">1</div><b>Recibes 4 evaluaciones</b><p>Las asignaciones son automáticas, balanceadas y nunca incluyen personas de tu propia área.</p></div><div class="card step"><div class="n">2</div><b>Respondes cada evaluación</b><p>Escala de 1 a 5 más preguntas abiertas.</p></div><div class="card step"><div class="n">3</div><b>Se bloquea al finalizar</b><p>Una evaluación enviada ya no puede editarse.</p></div></section>
   <div class="section-title"><h2>Tus evaluaciones del ciclo</h2><span>Asignación automática balanceada</span></div>
-  <div class="progressSummary"><span class="pill" id="donePill">0 de 3 completadas</span><span class="pill" id="pendingPill">3 pendientes</span></div>
+  <div class="progressSummary"><span class="pill" id="donePill">0 de 4 completadas</span><span class="pill" id="pendingPill">4 pendientes</span></div>
   <section class="summary" id="summary"></section>
 </section>
 
@@ -46,15 +46,14 @@
 </section>
 </main><div class="toast" id="toast"></div>
 <script>
-const STORAGE_KEY='edd360DevPreviewV3';
+const STORAGE_KEY='edd360DevPreviewV4';
 const catalog=[
-['legal','Legal','Mónica Evangelina Martínez Sánchez','Abogado Corporativo','Jurídico'],
-['reclutamiento','Reclutamiento','Alondra Casarrubias Duarte','Gerente Nacional de Reclutamiento','DO / Talento'],
-['qshe','QSHE / Calidad y Normatividad','Diana López Zúñiga','Líder de Calidad y Normatividad','QSHE'],
-['logistica','Compras y Logística','José Ricardo Zamora Acosta','Gerente Nacional de Compras y Logística','Logística'],
-['tesoreria','Tesorería','Maricela Fragoso Prado','Gerente de Tesorería','Finanzas']
+['ventas-daniela','Ventas','Daniela Fernanda Juárez Martínez','Gerente Nacional de Desarrollo de Negocios','Ventas'],
+['legal-monica','Legal','Mónica Evangelina Martínez Sánchez','Abogado Corporativo','Legal'],
+['logistica-ricardo','Logística','José Ricardo Zamora Acosta','Gerente Nacional de Compras y Logística','Logística'],
+['qshe-diana','QSHE + Mantenimiento','Diana López Zúñiga','Líder de Calidad y Normatividad','QSHE + Mantenimiento']
 ];
-const assignments=catalog.slice(0,3);
+const assignments=catalog.slice(0,4);
 const qs=[
 ['Resultados y orientación al negocio','Cumple los objetivos y compromisos establecidos.'],
 ['Resultados y orientación al negocio','Da seguimiento a los resultados e indicadores de su área.'],
@@ -73,9 +72,9 @@ const scale=[['Necesita mejorar','El comportamiento se presenta poco o no cumple
 let scores={},current=null;
 try{scores=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){scores={}}
 function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(scores))}
-function counters(){const d=assignments.filter(a=>scores[a[0]]?.done).length;donePill.textContent=`${d} de 3 completadas`;donePill.classList.toggle('done',d===3);pendingPill.textContent=`${3-d} pendientes`}
-function render(){summary.innerHTML=assignments.map((a,i)=>{const d=!!scores[a[0]]?.done;return `<article class="card assignment ${d?'completed':''}"><span class="tag">Asignación automática</span>${d?'<span class="tag complete">Completada</span>':''}<h3>${a[1]}</h3><div class="leader">${a[2]}</div><div class="role">${a[3]}</div><div class="meta">${a[4]} · Área distinta a la propia</div>${d?'<button class="btn locked" disabled>✓ Evaluación finalizada</button>':`<button class="btn primary open" data-i="${i}">Comenzar evaluación</button>`}</article>`}).join('');document.querySelectorAll('.open').forEach(b=>b.onclick=()=>openSurvey(+b.dataset.i));counters()}
-function openSurvey(i){current=assignments[i];if(scores[current[0]]?.done)return;assignmentView.style.display='none';survey.style.display='block';surveyArea.textContent=current[1];surveyPerson.innerHTML=`${current[2]}<br>${current[3]}`;surveyTitle.textContent=`Evaluación de ${current[1]}`;surveySub.textContent=`${current[2]} · ${current[3]}`;build();window.scrollTo(0,0)}
+function counters(){const total=assignments.length;const d=assignments.filter(a=>scores[a[0]]?.done).length;donePill.textContent=`${d} de ${total} completadas`;donePill.classList.toggle('done',d===total);pendingPill.textContent=`${total-d} pendientes`}
+function render(){summary.innerHTML=assignments.map((a,i)=>{const d=!!scores[a[0]]?.done;return `<article class="card assignment ${d?'completed':''}"><span class="tag">Asignación automática</span>${d?'<span class="tag complete">Completada</span>':''}<div class="eyebrow" style="margin-top:14px">Área ${a[1]}</div><h3>${a[2]}</h3><div class="role">${a[3]}</div><div class="meta">Área 360: ${a[4]} · Asignación equitativa</div>${d?'<button class="btn locked" disabled>✓ Evaluación finalizada</button>':`<button class="btn primary open" data-i="${i}">Comenzar evaluación</button>`}</article>`}).join('');document.querySelectorAll('.open').forEach(b=>b.onclick=()=>openSurvey(+b.dataset.i));counters()}
+function openSurvey(i){current=assignments[i];if(scores[current[0]]?.done)return;assignmentView.style.display='none';survey.style.display='block';surveyArea.textContent=`Área ${current[1]}`;surveyPerson.innerHTML=`${current[2]}<br>${current[3]}`;surveyTitle.textContent=`Evaluación de ${current[2]}`;surveySub.textContent=`${current[3]} · Área ${current[1]}`;build();window.scrollTo(0,0)}
 function qrow(q,n){const v=scores[current[0]]?.vals?.[n]||0;return `<div class="question"><p>${q}</p><div class="stars" data-q="${n}">${[1,2,3,4,5].map(x=>`<button type="button" class="star ${x<=v?'active':''}" data-v="${x}" title="${x} · ${scale[x-1][0]}">★</button>`).join('')}</div></div>`}
 function build(){const k=current[0];scores[k]=scores[k]||{vals:{},done:false,open:{}};donebox.style.display='none';surveyBody.style.display='block';document.querySelector('.footer').style.display='flex';const legend=`<div class="scaleLegend"><h4>Escala de evaluación</h4><div class="scaleGrid">${scale.map((s,i)=>`<div class="scaleItem"><div class="scaleStars">${'★'.repeat(i+1)}</div><b>${s[0]}</b><span>${s[1]}</span></div>`).join('')}</div></div>`;let body=legend;['Resultados y orientación al negocio','Liderazgo','Comunicación y colaboración','Toma de decisiones y mejora'].forEach(dim=>{const rows=qs.map((x,i)=>({x,i})).filter(o=>o.x[0]===dim).map(o=>qrow(o.x[1],o.i+1)).join('');body+=`<div class="dimension"><div class="dim-title">${dim}</div>${rows}</div>`});body+=`<div class="dimension"><div class="dim-title">Preguntas abiertas</div><div class="openLabel">¿Cuál consideras que es su principal fortaleza?</div><textarea class="textarea" data-open="strength">${scores[k].open.strength||''}</textarea><div class="openLabel">¿Qué aspecto debería desarrollar o mejorar?</div><textarea class="textarea" data-open="improve">${scores[k].open.improve||''}</textarea><div class="openLabel">¿Qué debería continuar haciendo?</div><textarea class="textarea" data-open="continue">${scores[k].open.continue||''}</textarea></div>`;surveyBody.innerHTML=body;document.querySelectorAll('.stars').forEach(g=>g.querySelectorAll('.star').forEach(b=>b.onclick=()=>{scores[k].vals[+g.dataset.q]=+b.dataset.v;g.querySelectorAll('.star').forEach(s=>s.classList.toggle('active',+s.dataset.v<=+b.dataset.v));progress();save()}));document.querySelectorAll('[data-open]').forEach(t=>t.oninput=()=>{scores[k].open[t.dataset.open]=t.value;save()});progress()}
 function progress(){const k=current[0],n=Object.keys(scores[k].vals).filter(x=>scores[k].vals[x]>0).length;progressText.textContent=`${n} / 12`;fill.style.width=`${(n/12)*100}%`}
