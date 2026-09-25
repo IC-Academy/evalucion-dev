@@ -1,0 +1,54 @@
+name: Sync EDD staging
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/sync-staging.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source EDD dev branch
+        uses: actions/checkout@v4
+        with:
+          repository: IC-Academy/Evaluacion-desempe-o-IC
+          ref: dev/360-module
+          path: source
+
+      - name: Checkout staging repository
+        uses: actions/checkout@v4
+        with:
+          repository: IC-Academy/evalucion-dev
+          ref: main
+          path: staging
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync source into staging
+        run: |
+          rsync -a --delete \
+            --exclude ".git/" \
+            --exclude ".github/" \
+            source/ staging/
+          mkdir -p staging/.github/workflows
+          cp "$GITHUB_WORKSPACE/staging/.github/workflows/sync-staging.yml" /tmp/sync-staging.yml || true
+          if [ -f /tmp/sync-staging.yml ]; then
+            cp /tmp/sync-staging.yml staging/.github/workflows/sync-staging.yml
+          fi
+
+      - name: Commit and push
+        working-directory: staging
+        run: |
+          git config user.name "IC-Academy Staging Sync"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to sync."
+            exit 0
+          fi
+          git commit -m "Sync staging from Evaluacion-desempe-o-IC dev/360-module"
+          git push origin main
