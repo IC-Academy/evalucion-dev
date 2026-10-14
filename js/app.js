@@ -777,10 +777,25 @@
     upsertColaboradorRemoto(me, liderId);
     const backendId = state.remote.mine.evaluation.evaluationId || state.remote.mine.evaluation.id;
     const local = getOrCreateLocalEvaluation(me.empleado, liderId, 'autoevaluacion', backendId, state.remote.mine.evaluation.state || state.remote.mine.evaluation.selfState);
-    (d.answers || []).filter(a => !/l[ií]der|leader/i.test(String(a.evaluator || a.evaluador || ''))).forEach(a => mapRemoteAnswerToLocal(local.id, a));
+    const remoteAnswers = Array.isArray(d.answers) ? d.answers : [];
+    const isLeaderAnswer = a => /l[ií]der|leader/i.test(String(a.evaluator || a.evaluador || a.evaluatorRole || ''));
+    remoteAnswers.filter(a => !isLeaderAnswer(a)).forEach(a => mapRemoteAnswerToLocal(local.id, a));
     hydrateObjectives(local.id, d.objectives || [], false);
-    syncBackendResultsFromDetail(d, local, null);
-    hydrateRemoteFeedback(d, me.empleado, state.periodo.id, S.getEvaluacion(me.empleado, state.periodo.id, 'lider'));
+
+    // Released feedback needs a local leader evaluation and its result. Before
+    // this, only self answers were hydrated, so section cards, 9-Box and leader
+    // commentary were rendered as empty despite a successful 200 response.
+    const leaderBackendId = (d.leaderEvaluation && (d.leaderEvaluation.evaluationId || d.leaderEvaluation.id)) || (String(backendId).endsWith('-LIDER') ? backendId : String(backendId) + '-LIDER');
+    const localLeader = getOrCreateLocalEvaluation(me.empleado, liderId, 'lider', leaderBackendId, 'leader_submitted');
+    remoteAnswers.filter(isLeaderAnswer).forEach(a => mapRemoteAnswerToLocal(localLeader.id, a));
+    hydrateObjectives(localLeader.id, (d.objectives || []).filter(o =>
+      o && (o.leaderValidatedPercent != null || o.leaderScore != null || o.calificacionLider != null)
+    ), true);
+    const backendResults = syncBackendResultsFromDetail(d, local, localLeader);
+    if (!backendResults.selfMetrics) ensureLocalResultForEvaluation(local);
+    if (!backendResults.leaderMetrics) ensureLocalResultForEvaluation(localLeader);
+
+    hydrateRemoteFeedback(d, me.empleado, state.periodo.id, localLeader);
   }
   function selfDraftPayload(localEvalId, backendId) {
     const ev = S.load().evaluaciones.find(e => e.id === localEvalId) || {};
