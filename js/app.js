@@ -677,8 +677,8 @@
     ].filter(Boolean);
     for (const src of candidates) {
       const globalScore = pickMetric(src, ['resultadoGlobalBackend','resultadoGlobal','globalResult','globalScore','score','Resultado global (backend)','Resultado Global Backend']);
-      const attitude = pickMetric(src, ['actitudBackend','attitudeBackend','attitude','actitud','Actitud (backend)','Actitud Backend']);
-      const performance = pickMetric(src, ['desempenoBackend','performanceBackend','performance','desempeno','Desempeño (backend)','Desempeno (backend)','Desempeño Backend']);
+      const attitude = pickMetric(src, ['attitudeScore','actitudBackend','attitudeBackend','attitude','actitud','Actitud (backend)','Actitud Backend']);
+      const performance = pickMetric(src, ['performanceScore','desempenoBackend','performanceBackend','performance','desempeno','Desempeño (backend)','Desempeno (backend)','Desempeño Backend']);
       if (globalScore !== null || attitude !== null || performance !== null) return { globalScore, attitude, performance, source:'backend' };
     }
     return null;
@@ -822,31 +822,26 @@
       o && (o.leaderValidatedPercent != null || o.leaderScore != null || o.calificacionLider != null)
     ), true);
     const backendResults = syncBackendResultsFromDetail(d, local, localLeader);
-    // Evaluation Detail currently returns no selfResult/leaderResult metrics.
-    // Recalculate the breakdown on every hydration, including for users with
-    // stale empty results from previous staging versions.
-    if (!backendResults.selfMetrics) persistBackendResult(local, { globalScore:null, attitude:null, performance:null });
-    if (!backendResults.leaderMetrics) {
+    // Detail v2 is authoritative. Do not infer official axes from a rounded
+    // global score, and never resurrect a stale leader result for unreleased data.
+    if (!backendResults.selfMetrics && d.selfResult === undefined)
+      persistBackendResult(local, {globalScore:null, attitude:null, performance:null});
+    if (!backendResults.leaderMetrics && d.leaderResult === undefined) {
+      // Legacy API fallback only; v2 never enters this branch.
       const cal = d.calibration || {};
-      const rawAtt = cal.attitudeScore;
-      const rawLeader = cal.leaderResult;
-      const att = rawAtt === null || rawAtt === undefined || rawAtt === '' ? null : Number(rawAtt);
-      const overall5 = rawLeader === null || rawLeader === undefined || rawLeader === '' ? null : Number(rawLeader);
-      const attitude100 = Number.isFinite(att) && att >= 0 && att <= 100 ? att : null;
-      // Official Rev.4: global (0-100) = 40% attitude + 60% performance.
-      // Unlike calibratedResult, leaderResult is not adjusted by DO.
-      // When these two source metrics exist, the other axis can be recovered
-      // exactly. It avoids using a zero/absent local objective score in 9-Box.
-      let performance100 = null;
-      if (attitude100 !== null && overall5 !== null && Number.isFinite(overall5) && overall5 >= 1 && overall5 <= 5) {
-        const derived = (overall5 * 20 - attitude100 * 0.4) / 0.6;
-        if (derived >= 0 && derived <= 100) performance100 = derived;
-      }
-      persistBackendResult(localLeader, {
-        globalScore: null,
-        attitude: attitude100,
-        performance: performance100
-      });
+      const attitude = pickMetric(cal, ['attitudeScore']);
+      const total = pickMetric(cal, ['leaderResult']);
+      const derived = attitude !== null && total !== null
+        ? (total * 20 - attitude * 0.4) / 0.6 : null;
+      persistBackendResult(localLeader, {globalScore:null, attitude,
+        performance: derived !== null && derived >= 0 && derived <= 100 ? derived : null});
+    }
+    if (d.leaderResult === null) {
+      // Pre-release employee view: eliminate any cached result from older sessions.
+      const db = S.load();
+      db.resultados = (db.resultados || []).filter(x => x.evaluacionId !== localLeader.id);
+      db.respuestas = (db.respuestas || []).filter(x => x.evaluacionId !== localLeader.id);
+      S.persist();
     }
 
     hydrateRemoteFeedback(d, me.empleado, state.periodo.id, localLeader);
