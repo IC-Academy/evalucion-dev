@@ -607,26 +607,49 @@
     if (up === 'TOOL-EXCEL') return S.saveHerramientaEvaluacion(localEvalId, 'excel', val);
     if (up === 'TOOL-POWERBI') return S.saveHerramientaEvaluacion(localEvalId, 'analisis', val);
     if (up === 'TOOL-IA') return S.saveHerramientaEvaluacion(localEvalId, 'ia', val);
-    const sec = ans.section || ans.seccion || (up.startsWith('A') ? 'actitud' : 'habilidades');
+    // Airtable sends title-case section names; calculations only read lowercase.
+    const rawSec = String(ans.section || ans.seccion || '').toLowerCase().trim();
+    const sec = rawSec.startsWith('act') ? 'actitud' :
+      (rawSec.startsWith('habil') || rawSec.startsWith('conoc')) ? 'habilidades' :
+      (up.startsWith('A') ? 'actitud' : 'habilidades');
     S.saveRespuesta(localEvalId, sec, String(cid), val, ans.comment || ans.comentario || '');
+  }
+  function hydrateToolAverage(localEvalId) {
+    const h = S.getHerramientasEvaluacion(localEvalId) || {};
+    const scores = [h.excel, h.analisis, h.ia]
+      .filter(v => v !== '' && v != null && String(v).toUpperCase() !== 'N/A')
+      .map(Number).filter(v => Number.isFinite(v) && v >= 1 && v <= 5);
+    if (scores.length) S.saveRespuesta(localEvalId, 'habilidades', 'B2',
+      scores.reduce((a, b) => a + b, 0) / scores.length, '');
   }
   function hydrateObjectives(localEvalId, objectives, leaderMode) {
     if (!Array.isArray(objectives)) return;
+    // Evaluation Detail returns one row for employee and another for leader.
+    // Merge by objectiveId, not row index, and never count each twice.
+    const merged = new Map();
     objectives.forEach((o, i) => {
-      const idx = Number.isFinite(Number(o.index)) ? Number(o.index) : i;
+      if (!o || typeof o !== 'object' || o.noObjectives) return;
+      const id = String(o.objectiveId || o.id || ('row-' + i));
+      merged.set(id, Object.assign({}, merged.get(id) || {}, Object.fromEntries(
+        Object.entries(o).filter(([,v]) => v !== null && v !== undefined && v !== '')
+      )));
+    });
+    Array.from(merged.values()).forEach((o, i) => {
+      const idx = i;
       const desc = o.description || o.descripcion || o.name || '';
+      if (!String(desc).trim()) return;
       const goal = o.goal ?? o.meta ?? '';
       const result = o.actualResult ?? o.resultado ?? '';
       const pctSelf = o.employeeCompletionPercent ?? o.completionPercent ?? o.cumplimiento ?? '';
       const scoreSelf = o.employeeScore ?? o.calificacionColaborador ?? o.score ?? o.calificacion ?? '';
       const pctLeader = o.leaderValidatedPercent ?? o.porcentajeValidadoLider ?? '';
       const scoreLeader = o.leaderScore ?? o.calificacionLider ?? '';
-      S.saveObjetivo(localEvalId, idx, desc, result, leaderMode ? (scoreLeader || '') : (scoreSelf || ''), {
-        meta: goal,
-        cumplimiento: leaderMode ? (pctLeader === null ? '' : pctLeader) : (pctSelf === null ? '' : pctSelf),
+      S.saveObjetivo(localEvalId, idx, desc, result, leaderMode ? (scoreLeader ?? '') : (scoreSelf ?? ''), {
+        meta: goal, backendObjectiveId:o.objectiveId || '',
+        cumplimiento: leaderMode ? pctLeader : pctSelf,
         cumplimientoAutomatico: pctSelf,
         calificacionAutomatica: scoreSelf,
-        ajusteManualLider: leaderMode && pctLeader !== '' && Number(pctLeader) !== Number(pctSelf),
+        ajusteManualLider: leaderMode && pctLeader !== '' && pctLeader !== null && Number(pctLeader) !== Number(pctSelf),
         justificacionLider: o.leaderAdjustmentReason || o.justificacionAjusteLider || ''
       });
     });
@@ -785,6 +808,7 @@
     const remoteAnswers = Array.isArray(d.answers) ? d.answers : [];
     const isLeaderAnswer = a => /l[ií]der|leader/i.test(String(a.evaluator || a.evaluador || a.evaluatorRole || ''));
     remoteAnswers.filter(a => !isLeaderAnswer(a)).forEach(a => mapRemoteAnswerToLocal(local.id, a));
+    hydrateToolAverage(local.id);
     hydrateObjectives(local.id, d.objectives || [], false);
 
     // Released feedback needs a local leader evaluation and its result. Before
@@ -793,6 +817,7 @@
     const leaderBackendId = (d.leaderEvaluation && (d.leaderEvaluation.evaluationId || d.leaderEvaluation.id)) || (String(backendId).endsWith('-LIDER') ? backendId : String(backendId) + '-LIDER');
     const localLeader = getOrCreateLocalEvaluation(me.empleado, liderId, 'lider', leaderBackendId, 'leader_submitted');
     remoteAnswers.filter(isLeaderAnswer).forEach(a => mapRemoteAnswerToLocal(localLeader.id, a));
+    hydrateToolAverage(localLeader.id);
     hydrateObjectives(localLeader.id, (d.objectives || []).filter(o =>
       o && (o.leaderValidatedPercent != null || o.leaderScore != null || o.calificacionLider != null)
     ), true);
