@@ -827,11 +827,25 @@
     // stale empty results from previous staging versions.
     if (!backendResults.selfMetrics) persistBackendResult(local, { globalScore:null, attitude:null, performance:null });
     if (!backendResults.leaderMetrics) {
-      const att = Number(d.calibration && d.calibration.attitudeScore);
+      const cal = d.calibration || {};
+      const rawAtt = cal.attitudeScore;
+      const rawLeader = cal.leaderResult;
+      const att = rawAtt === null || rawAtt === undefined || rawAtt === '' ? null : Number(rawAtt);
+      const overall5 = rawLeader === null || rawLeader === undefined || rawLeader === '' ? null : Number(rawLeader);
+      const attitude100 = Number.isFinite(att) && att >= 0 && att <= 100 ? att : null;
+      // Official Rev.4: global (0-100) = 40% attitude + 60% performance.
+      // Unlike calibratedResult, leaderResult is not adjusted by DO.
+      // When these two source metrics exist, the other axis can be recovered
+      // exactly. It avoids using a zero/absent local objective score in 9-Box.
+      let performance100 = null;
+      if (attitude100 !== null && overall5 !== null && Number.isFinite(overall5) && overall5 >= 1 && overall5 <= 5) {
+        const derived = (overall5 * 20 - attitude100 * 0.4) / 0.6;
+        if (derived >= 0 && derived <= 100) performance100 = derived;
+      }
       persistBackendResult(localLeader, {
-        globalScore:null,
-        attitude:Number.isFinite(att) && att > 0 ? att : null,
-        performance:null
+        globalScore: null,
+        attitude: attitude100,
+        performance: performance100
       });
     }
 
