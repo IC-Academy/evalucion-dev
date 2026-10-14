@@ -183,7 +183,7 @@
    */
   function calcularResultado(respuestasPorSeccion, objetivos) {
     const valoresA = (respuestasPorSeccion.actitud || []).map((r) => r.valor);
-    const valoresB = (respuestasPorSeccion.habilidades || []).map((r) => r.valor);
+    // B2 (Excel, Power BI e IA) es informativa: no participa en la nota de habilidades,\n    // el resultado global ni el eje de Desempeño / Nine Box.\n    const valoresB = (respuestasPorSeccion.habilidades || [])\n      .filter(r => String(r.competenciaId || '').toUpperCase() !== 'B2')\n      .map(r => r.valor);
     const valoresC = (respuestasPorSeccion.conocimientos || []).map((r) => r.valor);
 
     // Solo objetivos registrados (con descripción) y con calificación válida entran al promedio.
