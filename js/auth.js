@@ -121,7 +121,14 @@
     if (!pendiente || pendiente.numeroEmpleado !== numeroEmpleado) {
       throw new global.EDDApi.ApiError('validation', 'Primero solicita un código para este número de empleado.');
     }
-    if (Date.now() > pendiente.expiresAt) {
+    // En modo API el backend es la única fuente autoritativa para la vigencia
+    // del OTP. El contador del frontend es meramente informativo y no debe
+    // bloquear un código que el servidor todavía considera válido.
+    //
+    // Esto evita falsos "código vencido" por diferencias de reloj, pestañas
+    // suspendidas o estados efímeros del navegador. El backend valida siempre:
+    // requestId + empleado + hash + usado + fecha de vencimiento.
+    if (cfg().mode !== 'api' && Date.now() > pendiente.expiresAt) {
       throw new global.EDDApi.ApiError('expired', 'El código venció. Solicita uno nuevo.');
     }
 
@@ -131,7 +138,7 @@
       pendiente = null;
       // /auth/me es la fuente autoritativa de identidad/capacidades. Si está
       // disponible, enriquecemos la sesión inmediatamente después del OTP.
-      try { await refreshProfileFromApi(); } catch (e) { console.warn('EDDAuth: no fue posible hidratar /auth/me tras login.', e); }
+      try { await refreshProfileFromApi(true); } catch (e) { console.warn('EDDAuth: no fue posible hidratar /auth/me tras login; se conserva la sesión recién emitida.', e); }
       return resp;
     }
 
@@ -179,9 +186,9 @@
     });
   }
 
-  async function refreshProfileFromApi() {
+  async function refreshProfileFromApi(suppressSessionExpired) {
     if (cfg().mode !== 'api') return getSession();
-    const resp = await global.EDDApi.authMe();
+    const resp = await global.EDDApi.authMe(true, !!suppressSessionExpired);
     const data = resp && resp.data ? resp.data : resp;
     if (!data || !data.employee) return getSession();
     const session = getSession();

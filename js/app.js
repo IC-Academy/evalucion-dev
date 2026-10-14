@@ -31,7 +31,7 @@
     'Inicio':'Home','Autoevaluación':'Self-assessment','Retroalimentación':'Feedback',
     'Mi equipo':'My team','Pendientes por evaluar':'Pending evaluations','Dashboard':'Dashboard',
     'Calibración':'Calibration','Matriz 9-Box':'9-Box Matrix','Usuarios':'Users','Jerarquías':'Hierarchy',
-    'Auditoría':'Audit','Configuración':'Settings','Evaluación 360°':'360° Evaluation','Cerrar sesión':'Sign out',
+    'Auditoría':'Audit','Configuración':'Settings','Cerrar sesión':'Sign out',
     'Plataforma corporativa':'Corporate platform','Bienvenido(a)':'Welcome','Verificación de identidad':'Identity verification',
     'Utiliza tu número de empleado para acceder a tu evaluación.':'Use your employee number to access your evaluation.',
     'Revisa tu correo corporativo y captura el código temporal de 6 dígitos.':'Check your corporate email and enter the 6-digit temporary code.',
@@ -607,49 +607,26 @@
     if (up === 'TOOL-EXCEL') return S.saveHerramientaEvaluacion(localEvalId, 'excel', val);
     if (up === 'TOOL-POWERBI') return S.saveHerramientaEvaluacion(localEvalId, 'analisis', val);
     if (up === 'TOOL-IA') return S.saveHerramientaEvaluacion(localEvalId, 'ia', val);
-    // Airtable sends title-case section names; calculations only read lowercase.
-    const rawSec = String(ans.section || ans.seccion || '').toLowerCase().trim();
-    const sec = rawSec.startsWith('act') ? 'actitud' :
-      (rawSec.startsWith('habil') || rawSec.startsWith('conoc')) ? 'habilidades' :
-      (up.startsWith('A') ? 'actitud' : 'habilidades');
+    const sec = ans.section || ans.seccion || (up.startsWith('A') ? 'actitud' : 'habilidades');
     S.saveRespuesta(localEvalId, sec, String(cid), val, ans.comment || ans.comentario || '');
-  }
-  function hydrateToolAverage(localEvalId) {
-    const h = S.getHerramientasEvaluacion(localEvalId) || {};
-    const scores = [h.excel, h.analisis, h.ia]
-      .filter(v => v !== '' && v != null && String(v).toUpperCase() !== 'N/A')
-      .map(Number).filter(v => Number.isFinite(v) && v >= 1 && v <= 5);
-    if (scores.length) S.saveRespuesta(localEvalId, 'habilidades', 'B2',
-      scores.reduce((a, b) => a + b, 0) / scores.length, '');
   }
   function hydrateObjectives(localEvalId, objectives, leaderMode) {
     if (!Array.isArray(objectives)) return;
-    // Evaluation Detail returns one row for employee and another for leader.
-    // Merge by objectiveId, not row index, and never count each twice.
-    const merged = new Map();
     objectives.forEach((o, i) => {
-      if (!o || typeof o !== 'object' || o.noObjectives) return;
-      const id = String(o.objectiveId || o.id || ('row-' + i));
-      merged.set(id, Object.assign({}, merged.get(id) || {}, Object.fromEntries(
-        Object.entries(o).filter(([,v]) => v !== null && v !== undefined && v !== '')
-      )));
-    });
-    Array.from(merged.values()).forEach((o, i) => {
-      const idx = i;
+      const idx = Number.isFinite(Number(o.index)) ? Number(o.index) : i;
       const desc = o.description || o.descripcion || o.name || '';
-      if (!String(desc).trim()) return;
       const goal = o.goal ?? o.meta ?? '';
       const result = o.actualResult ?? o.resultado ?? '';
       const pctSelf = o.employeeCompletionPercent ?? o.completionPercent ?? o.cumplimiento ?? '';
       const scoreSelf = o.employeeScore ?? o.calificacionColaborador ?? o.score ?? o.calificacion ?? '';
       const pctLeader = o.leaderValidatedPercent ?? o.porcentajeValidadoLider ?? '';
       const scoreLeader = o.leaderScore ?? o.calificacionLider ?? '';
-      S.saveObjetivo(localEvalId, idx, desc, result, leaderMode ? (scoreLeader ?? '') : (scoreSelf ?? ''), {
-        meta: goal, backendObjectiveId:o.objectiveId || '',
-        cumplimiento: leaderMode ? pctLeader : pctSelf,
+      S.saveObjetivo(localEvalId, idx, desc, result, leaderMode ? (scoreLeader || '') : (scoreSelf || ''), {
+        meta: goal,
+        cumplimiento: leaderMode ? (pctLeader === null ? '' : pctLeader) : (pctSelf === null ? '' : pctSelf),
         cumplimientoAutomatico: pctSelf,
         calificacionAutomatica: scoreSelf,
-        ajusteManualLider: leaderMode && pctLeader !== '' && pctLeader !== null && Number(pctLeader) !== Number(pctSelf),
+        ajusteManualLider: leaderMode && pctLeader !== '' && Number(pctLeader) !== Number(pctSelf),
         justificacionLider: o.leaderAdjustmentReason || o.justificacionAjusteLider || ''
       });
     });
@@ -686,16 +663,11 @@
   function persistBackendResult(ev, metrics) {
     if (!ev || !ev.id || !metrics) return null;
     const existing = S.getResultado(ev.id);
-    // The API's 1-5 aggregate and 0-100 axis values do not contain the
-    // individual 40/30/30 section breakdown. Rebuild section breakdown from
-    // hydrated answers/objectives; never replace it with an aggregate-only object.
-    let calculated = null;
-    try {
-      calculated = C.calcularResultado(S.getRespuestasPorSeccion(ev.id), S.getObjetivos(ev.id));
-    } catch (e) { console.warn('EDD: no se pudo calcular desglose local', e); }
-    const localFallback = calculated || existing;
-    const promedios = Object.assign({}, (existing && existing.promedios) || {}, (localFallback && localFallback.promedios) || {});
-    const puntajes = Object.assign({}, (existing && existing.puntajes) || {}, (localFallback && localFallback.puntajes) || {});
+    const localFallback = existing || (() => {
+      try { return C.calcularResultado(S.getRespuestasPorSeccion(ev.id), S.getObjetivos(ev.id)); } catch (_) { return null; }
+    })();
+    const promedios = Object.assign({}, (localFallback && localFallback.promedios) || {});
+    const puntajes = Object.assign({}, (localFallback && localFallback.puntajes) || {});
     if (metrics.attitude !== null) promedios.actitud = metrics.attitude / 20;
     if (metrics.performance !== null) promedios.desempeno = metrics.performance / 20;
     if (metrics.globalScore !== null) puntajes.total = metrics.globalScore;
@@ -805,51 +777,10 @@
     upsertColaboradorRemoto(me, liderId);
     const backendId = state.remote.mine.evaluation.evaluationId || state.remote.mine.evaluation.id;
     const local = getOrCreateLocalEvaluation(me.empleado, liderId, 'autoevaluacion', backendId, state.remote.mine.evaluation.state || state.remote.mine.evaluation.selfState);
-    const remoteAnswers = Array.isArray(d.answers) ? d.answers : [];
-    const isLeaderAnswer = a => /l[ií]der|leader/i.test(String(a.evaluator || a.evaluador || a.evaluatorRole || ''));
-    remoteAnswers.filter(a => !isLeaderAnswer(a)).forEach(a => mapRemoteAnswerToLocal(local.id, a));
-    hydrateToolAverage(local.id);
+    (d.answers || []).filter(a => !/l[ií]der|leader/i.test(String(a.evaluator || a.evaluador || ''))).forEach(a => mapRemoteAnswerToLocal(local.id, a));
     hydrateObjectives(local.id, d.objectives || [], false);
-
-    // Released feedback needs a local leader evaluation and its result. Before
-    // this, only self answers were hydrated, so section cards, 9-Box and leader
-    // commentary were rendered as empty despite a successful 200 response.
-    const leaderBackendId = (d.leaderEvaluation && (d.leaderEvaluation.evaluationId || d.leaderEvaluation.id)) || (String(backendId).endsWith('-LIDER') ? backendId : String(backendId) + '-LIDER');
-    const localLeader = getOrCreateLocalEvaluation(me.empleado, liderId, 'lider', leaderBackendId, 'leader_submitted');
-    remoteAnswers.filter(isLeaderAnswer).forEach(a => mapRemoteAnswerToLocal(localLeader.id, a));
-    hydrateToolAverage(localLeader.id);
-    hydrateObjectives(localLeader.id, (d.objectives || []).filter(o =>
-      o && (o.leaderValidatedPercent != null || o.leaderScore != null || o.calificacionLider != null)
-    ), true);
-    const backendResults = syncBackendResultsFromDetail(d, local, localLeader);
-    // Evaluation Detail currently returns no selfResult/leaderResult metrics.
-    // Recalculate the breakdown on every hydration, including for users with
-    // stale empty results from previous staging versions.
-    if (!backendResults.selfMetrics) persistBackendResult(local, { globalScore:null, attitude:null, performance:null });
-    if (!backendResults.leaderMetrics) {
-      const cal = d.calibration || {};
-      const rawAtt = cal.attitudeScore;
-      const rawLeader = cal.leaderResult;
-      const att = rawAtt === null || rawAtt === undefined || rawAtt === '' ? null : Number(rawAtt);
-      const overall5 = rawLeader === null || rawLeader === undefined || rawLeader === '' ? null : Number(rawLeader);
-      const attitude100 = Number.isFinite(att) && att >= 0 && att <= 100 ? att : null;
-      // Official Rev.4: global (0-100) = 40% attitude + 60% performance.
-      // Unlike calibratedResult, leaderResult is not adjusted by DO.
-      // When these two source metrics exist, the other axis can be recovered
-      // exactly. It avoids using a zero/absent local objective score in 9-Box.
-      let performance100 = null;
-      if (attitude100 !== null && overall5 !== null && Number.isFinite(overall5) && overall5 >= 1 && overall5 <= 5) {
-        const derived = (overall5 * 20 - attitude100 * 0.4) / 0.6;
-        if (derived >= 0 && derived <= 100) performance100 = derived;
-      }
-      persistBackendResult(localLeader, {
-        globalScore: null,
-        attitude: attitude100,
-        performance: performance100
-      });
-    }
-
-    hydrateRemoteFeedback(d, me.empleado, state.periodo.id, localLeader);
+    syncBackendResultsFromDetail(d, local, null);
+    hydrateRemoteFeedback(d, me.empleado, state.periodo.id, S.getEvaluacion(me.empleado, state.periodo.id, 'lider'));
   }
   function selfDraftPayload(localEvalId, backendId) {
     const ev = S.load().evaluaciones.find(e => e.id === localEvalId) || {};
@@ -869,7 +800,78 @@
       noObjectivesDetail: noObjectives ? (ev.objetivosNoAplicanDetalle || '') : ''
     };
   }
+  function syncLeaderFinalSectionFromDom(localEvalId) {
+    const ev = S.load().evaluaciones.find(e => e.id === localEvalId);
+    if (!ev) return;
+
+    const block = document.querySelector('.leader-continuity-block');
+    if (block) {
+      const selects = Array.from(block.querySelectorAll('.leader-continuity-field select'));
+      const impact = String(selects[0] ? selects[0].value : ev.continuityOperationalImpact || '').trim();
+      const replacement = String(selects[1] ? selects[1].value : ev.continuityReplacementAvailability || '').trim();
+      const actions = Array.from(block.querySelectorAll('.leader-continuity-actions input[type="checkbox"]:checked'))
+        .map(el => String(el.dataset.action || el.value || '').trim())
+        .filter(Boolean);
+      const comment = block.querySelector('.leader-continuity-comment textarea');
+
+      ev.continuityOperationalImpact = impact;
+      ev.continuityReplacementAvailability = replacement;
+      if (actions.length) ev.continuityRecommendedActions = actions;
+      if (comment) ev.continuityConfidentialComment = String(comment.value || '').trim();
+      S.persist();
+    }
+
+    // If the leader typed an improvement/development item but did not press its
+    // separate "Guardar" button, commit it before saving/submitting the draft.
+    const colaboradorId = String(ev.colaboradorId || state.wizard.colaboradorId || '');
+    const periodoId = ev.periodoId || (state.periodo && state.periodo.id) || '';
+    const areaEl = colaboradorId ? document.getElementById('areaNueva-' + colaboradorId) : null;
+    const planEl = colaboradorId ? document.getElementById('planNuevo-' + colaboradorId) : null;
+    if (areaEl && !areaEl.classList.contains('hidden')) {
+      const area = document.getElementById('areaNueva-' + colaboradorId);
+      const plan = document.getElementById('planNuevo-' + colaboradorId);
+      if (area && plan && area.value.trim() && plan.value.trim()) {
+        S.addAreaOportunidad(colaboradorId, periodoId, area.value.trim(), plan.value.trim(), state.user.nombre);
+        area.value = ''; plan.value = '';
+      }
+    }
+    if (planEl && !planEl.classList.contains('hidden')) {
+      const comp = document.getElementById('competenciaNueva-' + colaboradorId);
+      const action = document.getElementById('accionNueva-' + colaboradorId);
+      const responsible = document.getElementById('responsableNuevo-' + colaboradorId);
+      const date = document.getElementById('fechaNueva-' + colaboradorId);
+      if (comp && action && comp.value.trim() && action.value.trim()) {
+        S.addPlanDesarrollo(colaboradorId, periodoId, {
+          competencia: comp.value.trim(),
+          accion: action.value.trim(),
+          responsable: responsible && responsible.value.trim() ? responsible.value.trim() : String(state.user.empleado || ''),
+          fechaCompromiso: date && date.value ? date.value : ''
+        }, state.user.nombre);
+        comp.value = ''; action.value = '';
+      }
+    }
+  }
+
+  function canonicalContinuityRisk(ev) {
+    const impacts = ['Bajo','Moderado','Alto','Crítico'];
+    const replacements = ['Cobertura inmediata','Cobertura con capacitación breve','Cobertura parcial','Sin reemplazo identificado'];
+    const actionCatalog = ['Documentar procesos','Transferir conocimientos','Capacitación cruzada','Preparar sucesor','Plan de retención','Redistribuir responsabilidades','Ninguna acción inmediata','Otra'];
+    const impact = String(ev.continuityOperationalImpact || '').trim();
+    const replacement = String(ev.continuityReplacementAvailability || '').trim();
+    const actions = (Array.isArray(ev.continuityRecommendedActions) ? ev.continuityRecommendedActions : [])
+      .map(v => String(v || '').trim()).filter(v => actionCatalog.includes(v));
+    return {
+      operationalImpact: impacts.includes(impact) ? impact : '',
+      replacementAvailability: replacements.includes(replacement) ? replacement : '',
+      recommendedActions: [...new Set(actions)],
+      confidentialComment: String(ev.continuityConfidentialComment || '').trim(),
+      riskLevel: continuityRiskLevel(impact, replacement),
+      status: 'Confirmado'
+    };
+  }
+
   function leaderDraftPayload(localEvalId, backendId) {
+    syncLeaderFinalSectionFromDom(localEvalId);
     const ev = S.load().evaluaciones.find(e => e.id === localEvalId) || {};
     const answers = S.getRespuestas(localEvalId).filter(r => String(r.competenciaId).toUpperCase() !== 'B2').map(r => ({competencyId:r.competenciaId, value:r.valor, comment:r.comentario || ''}));
     const h = S.getHerramientasEvaluacion(localEvalId) || {};
@@ -901,14 +903,7 @@
       gaps: ev.debilidadesBrechas || '',
       risks: ev.riesgosAtencion || '',
       leaderSummary: ev.comentarios || '',
-      continuityRisk: {
-        operationalImpact: ev.continuityOperationalImpact || '',
-        replacementAvailability: ev.continuityReplacementAvailability || '',
-        recommendedActions: Array.isArray(ev.continuityRecommendedActions) ? ev.continuityRecommendedActions : [],
-        confidentialComment: ev.continuityConfidentialComment || '',
-        riskLevel: continuityRiskLevel(ev.continuityOperationalImpact, ev.continuityReplacementAvailability),
-        status: 'Confirmado'
-      },
+      continuityRisk: canonicalContinuityRisk(ev),
       improvementPlan,
       developmentPlan
     };
@@ -987,24 +982,13 @@
     const mineEval = state.remote.mine && state.remote.mine.evaluation;
     const id = mineEval && (mineEval.evaluationId || mineEval.id);
     if (!id || (state.remote.detail && !force)) return;
-    if (state.remote.detailError && !force) return;
     state.remote.detailLoading = true;
-    state.remote.detailError = null;
     try {
-      const detail = apiData(await global.EDDApi.evaluationDetail(id, !!force));
-      if (!detail || typeof detail !== 'object' || Array.isArray(detail)) {
-        throw new Error('El servidor no devolvió un expediente de evaluación válido.');
-      }
-      state.remote.detail = detail;
-      try { hydrateOwnRemoteDetail(); } catch (e) {
-        console.error('EDD read: error al procesar expediente propio', e);
-        state.remote.detail = null;
-        throw new Error('No fue posible procesar los datos de tu evaluación. Reintenta o contacta a soporte.');
-      }
+      state.remote.detail = apiData(await global.EDDApi.evaluationDetail(id, !!force));
+      try { hydrateOwnRemoteDetail(); } catch (e) { console.warn('EDD read: no fue posible hidratar detalle propio', e); }
     } catch (e) {
-      state.remote.detail = null;
-      state.remote.detailError = e && e.message ? e.message : 'No fue posible cargar el detalle de la evaluación.';
-      console.error('EDD read: detalle propio no disponible', { evaluationId: id, error: e });
+      console.warn('EDD read: detalle propio no disponible', e);
+      showNotice(e && e.message ? e.message : 'No fue posible cargar el detalle de la evaluación.', 'warning');
     } finally {
       state.remote.detailLoading = false;
       render();
@@ -1149,12 +1133,8 @@
     const necesitaDetallePropio = (area === 'colaborador' && (page === 'autoevaluacion' || page === 'retroalimentacion')) || (area === 'lider' && (page === 'mi-autoevaluacion' || page === 'mi-retroalimentacion'));
     const mineEvalParaDetalle = state.remote.mine && state.remote.mine.evaluation;
     if (apiReadMode() && necesitaDetallePropio && mineEvalParaDetalle && !state.remote.detail) {
-      if (state.remote.detailError) {
-        root.innerHTML = `<main class="container backend-state-page"><div class="card backend-state-card"><div class="backend-state-icon">!</div><h2>No pudimos abrir tu evaluación</h2><p class="muted">${esc(state.remote.detailError)}</p><button class="btn btn-primary" onclick="App.reintentarDetallePropio()">Reintentar cargar evaluación</button><p class="backend-read-note">Tus respuestas y resultados guardados no se modificaron.</p></div></main>`;
-      } else {
-        if (!state.remote.detailLoading) ensureOwnRemoteDetail(false);
-        root.innerHTML = viewBackendLoading().replace('Cargando tu información','Cargando tu evaluación').replace('Preparando tu experiencia y la información del periodo…','Recuperando respuestas y objetivos guardados…');
-      }
+      if (!state.remote.detailLoading) ensureOwnRemoteDetail(false);
+      root.innerHTML = viewBackendLoading().replace('Cargando tu información','Cargando tu evaluación').replace('Preparando tu experiencia y la información del periodo…','Recuperando respuestas y objetivos guardados…');
       translateDOM(root);
       return;
     }
@@ -1189,12 +1169,12 @@
     const per = state.periodo;
     let tabs = [];
     if (u.perfil === 'colaborador') {
-      tabs = [['inicio', 'Inicio'], ['autoevaluacion', 'Autoevaluación'], ['retroalimentacion', 'Retroalimentación'], ['360', 'Evaluación 360°']];
+      tabs = [['inicio', 'Inicio'], ['autoevaluacion', 'Autoevaluación'], ['retroalimentacion', 'Retroalimentación']];
     } else if (u.perfil === 'lider') {
-      tabs = [['dashboard', 'Mi equipo'], ['pendientes', 'Pendientes por evaluar'], ['firmas', 'Por firmar'], ['360', 'Evaluación 360°']];
+      tabs = [['dashboard', 'Mi equipo'], ['pendientes', 'Pendientes por evaluar'], ['firmas', 'Por firmar']];
       if (perfilesDisponibles(u).includes('colaborador')) tabs.unshift(['mi-inicio', 'Mi evaluación']);
     } else {
-      tabs = [['dashboard', 'Dashboard'], ['calibracion', 'Calibración'], ['9box', 'Matriz 9-Box'], ['usuarios', 'Usuarios'], ['360', 'Evaluación 360°'], ['config', 'Configuración']];
+      tabs = [['dashboard', 'Dashboard'], ['calibracion', 'Calibración'], ['9box', 'Matriz 9-Box'], ['usuarios', 'Usuarios'], ['config', 'Configuración']];
     }
     const retroPendiente = u.perfil === 'colaborador' && state.periodo && (() => { const cal=S.getCalibracion(u.empleado, state.periodo.id); return !!(cal && cal.retroHabilitada && !cal.aceptacionColaborador); })();
     const firmasPendientesLider = u.perfil === 'lider' && state.periodo ? S.getColaboradoresDeLider(u.empleado).filter((c) => { const cal = S.getCalibracion(c.empleado, state.periodo.id); return !!(cal && cal.acuerdosLiberados && !cal.firmaLider); }).length : 0;
@@ -1207,7 +1187,6 @@
       const atencion = (esRetro && retroPendiente) || (esFirma && firmasPendientesLider > 0) || autoPropiaPendiente;
       const badgeCount = esRetro && retroPendiente ? 1 : esFirma ? firmasPendientesLider : autoPropiaPendiente ? 1 : 0;
       const titulo = esRetro ? 'Retroalimentación disponible' : esFirma ? 'Acuerdos pendientes por firmar' : 'Tu autoevaluación está pendiente';
-      if (t[0] === '360') return `<a href="360-demo-final.html" class="${page === '360' ? 'active' : ''}">${t[1]}</a>`;
       return `<a href="#/${area === 'colaborador' ? 'colaborador' : area}/${t[0]}" class="${page === t[0] ? 'active' : ''}${atencion ? ' nav-attention' : ''}">${t[1]}${atencion ? `<span class="nav-notification-dot" title="${titulo}">${badgeCount}</span>` : ''}</a>`;
     }).join('');
     const iniciales = esc((u.nombre || '').split(/\s+/).slice(0,2).map(x => x[0] || '').join('').toUpperCase());
@@ -2045,7 +2024,7 @@
             <label><span>Motivo principal <em>obligatorio</em></span><select onchange="App.setObjetivosNoAplicanMotivo('${ev.id}',this.value)"><option value="">Selecciona un motivo</option>${['No se definieron objetivos formales para mi puesto','Ingresé después del periodo de definición','Mi función operó sin metas documentadas','Otro'].map(x=>`<option value="${x}" ${ev.objetivosNoAplicanMotivo===x?'selected':''}>${x}</option>`).join('')}</select></label>
             <label><span>Contexto breve <em>obligatorio</em></span><textarea placeholder="Explica brevemente por qué no tuviste objetivos definidos durante el periodo." oninput="App.setObjetivosNoAplicanDetalle('${ev.id}',this.value)">${esc(ev.objetivosNoAplicanDetalle||'')}</textarea></label>
           </div>
-        </div>` : `<div id="objetivosWrap">${filas.map((o, i) => renderObjetivoRow(ev.id, o, Number(o.index ?? i), soloLecturaDescripcion, !comprendido)).join('')}</div>${filas.length < 5 ? `<button class="btn btn-outline btn-sm smart-add-objective" ${comprendido ? '' : 'disabled'} onclick="App.agregarObjetivo('${ev.id}')">+ Agregar objetivo</button>` : ''}`}
+        </div>` : `<div id="objetivosWrap">${filas.map((o, i) => renderObjetivoRow(ev.id, o, Number(o.index ?? i), soloLecturaDescripcion, !comprendido)).join('')}</div>${filas.length < 5 ? `<button type="button" class="btn btn-outline btn-sm smart-add-objective" ${comprendido ? '' : 'disabled'} onclick="App.agregarObjetivo('${ev.id}')">+ Agregar objetivo</button>` : ''}`}
       </section>
     </div>`;
   }
@@ -2054,7 +2033,7 @@
     const calif = o.calificacion || '';
     return `<div class="objetivo-row kpi-objective-row ${bloqueado ? 'is-locked' : ''}" data-idx="${index}">
       <div class="objetivo-num">#${index + 1}</div>
-      <button class="btn btn-outline btn-sm btn-remove-objective" ${bloqueado ? 'bloqueado' : ''} onclick="App.quitarObjetivo('${evaluacionId}',${index})">× Quitar</button>
+      <button type="button" class="btn btn-outline btn-sm btn-remove-objective" ${bloqueado ? 'bloqueado' : ''} onclick="App.quitarObjetivo('${evaluacionId}',${index})">× Quitar</button>
       <div class="objetivo-fields kpi-objective-fields">
         <div class="form-group kpi-objective-main"><label>Objetivo</label><textarea ${bloqueado||soloLecturaDescripcion?'bloqueado':''} placeholder="Describe el objetivo acordado para el periodo" onchange="App.editarObjetivoKPI('${evaluacionId}',${index},'descripcion',this.value)">${esc(o.descripcion || '')}</textarea></div>
         <div class="kpi-objective-grid">
@@ -2557,7 +2536,7 @@
           <button type="button" class="decision-card ${decision==='rechazado'?'active reject':''}" onclick="App.decisionObjetivosNoAplicanLider('${ev.id}','rechazado')"><b>Había objetivos</b><span>Debes documentarlos y evaluarlos para este cierre.</span></button>
         </div>
         ${decision==='confirmado' ? `<label class="leader-na-comment"><span>Comentario del líder <em>obligatorio</em></span><textarea placeholder="Confirma el contexto o explica por qué no se definieron objetivos para este puesto." oninput="App.setObjetivosNoAplicanComentarioLider('${ev.id}',this.value)">${esc(ev.objetivosNoAplicanComentarioLider||'')}</textarea></label>` : ''}
-        ${decision==='rechazado' ? `<div class="leader-objectives-recovery"><div class="leader-form-intro"><strong>Documenta los objetivos que sí existían</strong><span>Captura objetivo, meta y resultado. El cumplimiento y la equivalencia se calcularán automáticamente. Esta discrepancia quedará visible para DO.</span></div><div id="objetivosWrap">${leaderRows.map((o,i)=>renderObjetivoRow(ev.id,o,Number(o.index??i),false,false)).join('')}</div>${leaderRows.length<5?`<button class="btn btn-outline btn-sm smart-add-objective" onclick="App.agregarObjetivo('${ev.id}')">+ Agregar objetivo</button>`:''}<label class="leader-na-comment"><span>Justificación de la discrepancia <em>obligatoria</em></span><textarea placeholder="Explica por qué consideras que sí existían objetivos aunque el colaborador reportó lo contrario." oninput="App.setObjetivosNoAplicanComentarioLider('${ev.id}',this.value)">${esc(ev.objetivosNoAplicanComentarioLider||'')}</textarea></label></div>` : ''}
+        ${decision==='rechazado' ? `<div class="leader-objectives-recovery"><div class="leader-form-intro"><strong>Documenta los objetivos que sí existían</strong><span>Captura objetivo, meta y resultado. El cumplimiento y la equivalencia se calcularán automáticamente. Esta discrepancia quedará visible para DO.</span></div><div id="objetivosWrap">${leaderRows.map((o,i)=>renderObjetivoRow(ev.id,o,Number(o.index??i),false,false)).join('')}</div>${leaderRows.length<5?`<button type="button" class="btn btn-outline btn-sm smart-add-objective" onclick="App.agregarObjetivo('${ev.id}')">+ Agregar objetivo</button>`:''}<label class="leader-na-comment"><span>Justificación de la discrepancia <em>obligatoria</em></span><textarea placeholder="Explica por qué consideras que sí existían objetivos aunque el colaborador reportó lo contrario." oninput="App.setObjetivosNoAplicanComentarioLider('${ev.id}',this.value)">${esc(ev.objetivosNoAplicanComentarioLider||'')}</textarea></label></div>` : ''}
       </section>`;
     }
     if (!objetivosAuto.length) return '<p class="muted">El colaborador no registró objetivos en este periodo.</p>';
@@ -2617,7 +2596,7 @@
         <label class="leader-continuity-field"><span>Disponibilidad de reemplazo <em>obligatorio</em></span><select onchange="App.setContinuityField('${ev.id}','continuityReplacementAvailability',this.value)"><option value="">Selecciona una opción</option>${['Cobertura inmediata','Cobertura con capacitación breve','Cobertura parcial','Sin reemplazo identificado'].map(v=>`<option value="${v}" ${ev.continuityReplacementAvailability===v?'selected':''}>${v}</option>`).join('')}</select><small>Valora si otra persona puede asumir las funciones con el conocimiento disponible hoy.</small></label>
       </div>
       <div class="leader-continuity-result ${continuityLevel ? 'risk-'+continuityLevel.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') : 'pending'}"><span>Nivel de riesgo calculado</span><strong>${esc(continuityLevel||'Pendiente de completar')}</strong></div>
-      <fieldset class="leader-continuity-actions"><legend>Acciones recomendadas</legend><p>Selecciona una o más acciones para gestionar la continuidad.</p><div>${continuityActionOptions.map(v=>`<label><input type="checkbox" ${continuityActions.includes(v)?'checked':''} onchange="App.toggleContinuityAction('${ev.id}','${v}',this.checked)"/> <span>${v}</span></label>`).join('')}</div></fieldset>
+      <fieldset class="leader-continuity-actions"><legend>Acciones recomendadas</legend><p>Selecciona una o más acciones para gestionar la continuidad.</p><div>${continuityActionOptions.map(v=>`<label><input type="checkbox" value="${esc(v)}" data-action="${esc(v)}" ${continuityActions.includes(v)?'checked':''} onchange="App.toggleContinuityAction('${ev.id}','${v}',this.checked)"/> <span>${v}</span></label>`).join('')}</div></fieldset>
       <label class="leader-continuity-comment"><span>Comentario confidencial para RH</span><textarea maxlength="1500" placeholder="Describe funciones críticas, conocimiento especializado, posibles coberturas o acciones que RH deba considerar." oninput="App.setContinuityField('${ev.id}','continuityConfidentialComment',this.value)">${esc(ev.continuityConfidentialComment||'')}</textarea><small>No incluyas diagnósticos médicos, datos sensibles ni apreciaciones personales. Registra únicamente hechos y contexto operativo.</small></label>
       <div class="leader-continuity-privacy"><b>Esta información no será visible para el colaborador</b><span>Solo podrá consultarla el líder responsable y el personal autorizado de RH/administración.</span></div>
     </section>
@@ -4023,12 +4002,6 @@
     ocultarNuevoPlan(colaboradorId){ const el=document.getElementById('nuevoPlan-'+colaboradorId); if(el) el.classList.add('hidden'); },
     guardarNuevoPlan(colaboradorId,liderId){ const c=document.getElementById('competenciaNueva-'+colaboradorId),a=document.getElementById('accionNueva-'+colaboradorId),r=document.getElementById('responsableNuevo-'+colaboradorId),f=document.getElementById('fechaNueva-'+colaboradorId); if(!c||!a||!c.value.trim()||!a.value.trim()){showNotice('Completa la competencia y la acción de desarrollo.','warning');return;} S.addPlanDesarrollo(colaboradorId,state.periodo.id,{competencia:c.value.trim(),accion:a.value.trim(),responsable:r&&r.value.trim()?r.value.trim():liderId,fechaCompromiso:f&&f.value?f.value:'2026-09-01'},state.user.nombre); render(); },
     quitarPlanDesarrollo(id) { S.removePlanDesarrollo(id, state.user.nombre); render(); },
-    reintentarDetallePropio() {
-      if (state.remote.detailLoading) return;
-      state.remote.detailError = null;
-      ensureOwnRemoteDetail(true);
-      render();
-    },
     async enviarEvaluacionLider(colaboradorId) {
       if (state.remote.leaderSubmitting) return;
       if (!$('#confirmEnvioLider').checked) { showNotice(t('Confirma que la evaluación está completa antes de enviar.'),'warning'); return; }
@@ -4061,10 +4034,18 @@
           return;
         }
       }
+      syncLeaderFinalSectionFromDom(evaluacionId);
       const evActual = S.load().evaluaciones.find((e) => e.id === evaluacionId);
-      if (!(evActual && evActual.continuityOperationalImpact && evActual.continuityReplacementAvailability)) {
+      const continuity = evActual ? canonicalContinuityRisk(evActual) : null;
+      const requiresComment = continuity && (continuity.operationalImpact === 'Alto' || continuity.operationalImpact === 'Crítico' || continuity.replacementAvailability === 'Sin reemplazo identificado');
+      if (!(continuity && continuity.operationalImpact && continuity.replacementAvailability && continuity.recommendedActions.length)) {
         state.wizard.seccionIdx = SECCIONES_WIZARD.length - 1; render();
-        setTimeout(() => showNotice(currentLang === 'en' ? 'Complete the confidential operational continuity section before submitting.' : 'Completa la sección confidencial de continuidad operativa antes de enviar.','warning'), 0);
+        setTimeout(() => showNotice(currentLang === 'en' ? 'Complete impact, replacement availability and at least one continuity action before submitting.' : 'Completa impacto, disponibilidad de reemplazo y al menos una acción de continuidad antes de enviar.','warning'), 0);
+        return;
+      }
+      if (requiresComment && !continuity.confidentialComment) {
+        state.wizard.seccionIdx = SECCIONES_WIZARD.length - 1; render();
+        setTimeout(() => showNotice(currentLang === 'en' ? 'Add the confidential HR comment required for this continuity risk.' : 'Agrega el comentario confidencial para RH requerido por este nivel de riesgo.','warning'), 0);
         return;
       }
       if (requiereJustificacionNA(evaluacionId) && !(evActual && String(evActual.comentarios || '').trim())) {
