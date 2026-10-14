@@ -663,11 +663,16 @@
   function persistBackendResult(ev, metrics) {
     if (!ev || !ev.id || !metrics) return null;
     const existing = S.getResultado(ev.id);
-    const localFallback = existing || (() => {
-      try { return C.calcularResultado(S.getRespuestasPorSeccion(ev.id), S.getObjetivos(ev.id)); } catch (_) { return null; }
-    })();
-    const promedios = Object.assign({}, (localFallback && localFallback.promedios) || {});
-    const puntajes = Object.assign({}, (localFallback && localFallback.puntajes) || {});
+    // The API's 1-5 aggregate and 0-100 axis values do not contain the
+    // individual 40/30/30 section breakdown. Rebuild section breakdown from
+    // hydrated answers/objectives; never replace it with an aggregate-only object.
+    let calculated = null;
+    try {
+      calculated = C.calcularResultado(S.getRespuestasPorSeccion(ev.id), S.getObjetivos(ev.id));
+    } catch (e) { console.warn('EDD: no se pudo calcular desglose local', e); }
+    const localFallback = calculated || existing;
+    const promedios = Object.assign({}, (existing && existing.promedios) || {}, (localFallback && localFallback.promedios) || {});
+    const puntajes = Object.assign({}, (existing && existing.puntajes) || {}, (localFallback && localFallback.puntajes) || {});
     if (metrics.attitude !== null) promedios.actitud = metrics.attitude / 20;
     if (metrics.performance !== null) promedios.desempeno = metrics.performance / 20;
     if (metrics.globalScore !== null) puntajes.total = metrics.globalScore;
