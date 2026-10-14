@@ -822,8 +822,18 @@
       o && (o.leaderValidatedPercent != null || o.leaderScore != null || o.calificacionLider != null)
     ), true);
     const backendResults = syncBackendResultsFromDetail(d, local, localLeader);
-    if (!backendResults.selfMetrics) ensureLocalResultForEvaluation(local);
-    if (!backendResults.leaderMetrics) ensureLocalResultForEvaluation(localLeader);
+    // Evaluation Detail currently returns no selfResult/leaderResult metrics.
+    // Recalculate the breakdown on every hydration, including for users with
+    // stale empty results from previous staging versions.
+    if (!backendResults.selfMetrics) persistBackendResult(local, { globalScore:null, attitude:null, performance:null });
+    if (!backendResults.leaderMetrics) {
+      const att = Number(d.calibration && d.calibration.attitudeScore);
+      persistBackendResult(localLeader, {
+        globalScore:null,
+        attitude:Number.isFinite(att) && att > 0 ? att : null,
+        performance:null
+      });
+    }
 
     hydrateRemoteFeedback(d, me.empleado, state.periodo.id, localLeader);
   }
