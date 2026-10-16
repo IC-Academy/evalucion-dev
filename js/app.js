@@ -3159,7 +3159,7 @@
     return row && row.status === 'pending_calibration' && gap !== null && gap <= 0.20
       && row.calibrationStatus !== 'calibration_completed';
   }
-  function calibrationSelectable(row) { const d = calibrationGap(row); return row && row.status === 'pending_calibration' && d !== null && d <= 0.50 && row.calibrationStatus !== 'calibration_completed'; }
+  function calibrationSelectable(row) { const d = calibrationGap(row); return row && row.status === 'pending_calibration' && d !== null && Math.round(d*100)/100 <= 0.50 && row.calibrationStatus !== 'calibration_completed'; }
   function viewCalibracionLista(periodoId) {
     if (apiReadMode()) {
       const queue = state.remote.calibration || {};
@@ -3204,7 +3204,7 @@
         </div>
         <div class="card" style="overflow-x:auto">
           <table class="table"><thead><tr><th>Seleccionar</th><th>Colaborador</th><th>Líder</th><th>Autoevaluación</th><th>Evaluación líder</th><th>Diferencia absoluta</th><th>Prioridad</th><th>Estado</th><th>Acción</th></tr></thead><tbody>
-          ${shown.map(x=>{const gap=calibrationGap(x), eligible=quickCalibrationEligible(x), key=String(x.employeeId||'');return `<tr>
+          ${shown.map(x=>{const gap=calibrationGap(x), eligible=calibrationSelectable(x), key=String(x.employeeId||'');return `<tr>
             <td><input type="checkbox" aria-label="Seleccionar ${esc(x.name||key)}" ${eligible?'':'disabled'} ${calibrationBatchSelection.has(key)?'checked':''} onchange="App.seleccionarCalibracion('${esc(key)}',this.checked)"></td>
             <td><strong>${esc(x.name||key)}</strong><br><small>${esc(key)} · ${esc(x.area||'')}</small></td>
             <td>${esc(x.leaderName||'—')}</td><td>${score(x.selfResult)}</td><td>${score(x.leaderResult)}</td>
