@@ -3200,7 +3200,7 @@
             <button class="btn btn-outline btn-sm" onclick="App.limpiarSeleccionCalibracion()">Limpiar selección</button>
             <button class="btn btn-primary btn-sm" ${calibrationBatchSelection.size?'':'disabled'} onclick="App.previsualizarCalibracionMultiple()">Revisar lote (${calibrationBatchSelection.size})</button>
           </div>
-          <p class="muted" style="margin:12px 0 0">Puedes seleccionar diferencias bajas y medias (hasta 0.50). Por seguridad, n8n solo completa en lote diferencias hasta 0.20; las medias requieren revisión individual hasta ampliar el backend.</p>
+          <p class="muted" style="margin:12px 0 0">Puedes seleccionar diferencias bajas y medias (hasta 0.50). Los casos de prioridad media exigen una confirmación adicional tras la revisión de DO. Ninguna calibración libera resultados automáticamente.</p>
         </div>
         <div class="card" style="overflow-x:auto">
           <table class="table"><thead><tr><th>Seleccionar</th><th>Colaborador</th><th>Líder</th><th>Autoevaluación</th><th>Evaluación líder</th><th>Diferencia absoluta</th><th>Prioridad</th><th>Estado</th><th>Acción</th></tr></thead><tbody>
@@ -4497,11 +4497,13 @@
         .filter(x => calibrationBatchSelection.has(String(x.employeeId)) && calibrationSelectable(x));
       if (!rows.length) { showNotice('No hay evaluaciones elegibles seleccionadas.','warning'); return; }
       const mediumRows = rows.filter(x => !quickCalibrationEligible(x));
+      // Extra explicit review for yellow cases before final batch confirmation.
       if (mediumRows.length) {
-        const items = mediumRows.map(x => String(x.name||x.employeeId)+' · diferencia '+calibrationGap(x).toFixed(2)).join('\\n');
-        global.alert('Hay '+mediumRows.length+' evaluaciones de prioridad MEDIA seleccionadas:\\n'+items+
-          '\\n\\nPor ahora requieren revisión individual. El backend de calibración masiva solo permite diferencias de hasta 0.20; no se envió ningún registro.');
-        return;
+        const items = mediumRows.map(x => String(x.name||x.employeeId)+' · diferencia '+calibrationGap(x).toFixed(2)).join('\n');
+        if (!global.confirm('CONFIRMACIÓN ADICIONAL — PRIORIDAD MEDIA\n\n'+items+
+          '\n\nEstas evaluaciones presentan diferencias mayores a 0.20 y hasta 0.50.'+
+          '\nSe conservará el resultado del líder sin ajustes.'+
+          '\n¿Revisaste individualmente estos casos y autorizas incluirlos en el lote?')) return;
       }
       if (rows.length > 25) { showNotice('Máximo 25 evaluaciones por lote.','warning'); return; }
       if (rows.some(x => !x.evaluationId || !/^EV-\d{4}-\d{2}-\d+$/.test(String(x.evaluationId)))) {
@@ -4517,7 +4519,7 @@
       state.remote.calibrationBatchRunning = true;
       render();
       try {
-        const response = apiData(await global.EDDApi.bulkCompleteCalibration(rows.map(x=>String(x.evaluationId))));
+        const response = apiData(await global.EDDApi.bulkCompleteCalibration(rows.map(x=>String(x.evaluationId)), mediumRows.length > 0));
         const results = Array.isArray(response.results) ? response.results : [];
         const completed = Number(response.completed||0), skipped = Number(response.skipped||0), failed = Number(response.failed||0);
         const details = results.map(x=>String(x.evaluationId||'')+' — '+String(x.status||'')+
