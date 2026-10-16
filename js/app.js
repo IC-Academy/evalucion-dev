@@ -4490,15 +4490,39 @@
       render();
     },
     limpiarSeleccionCalibracion() { calibrationBatchSelection.clear(); render(); },
-    previsualizarCalibracionMultiple() {
+    async previsualizarCalibracionMultiple() {
+      if (state.remote.calibrationBatchRunning) return;
       const rows = ((state.remote.calibration && state.remote.calibration.pending) || [])
         .filter(x => calibrationBatchSelection.has(String(x.employeeId)) && quickCalibrationEligible(x));
-      const title = 'Revisión de lote — ' + rows.length + ' evaluaciones';
-      const detail = rows.slice(0,15).map(x => String(x.employeeId)+' · '+String(x.name||'')+
-        ' | auto '+Number(x.selfResult).toFixed(2)+' / líder '+Number(x.leaderResult).toFixed(2)+
-        ' / diferencia '+calibrationGap(x).toFixed(2)).join('\\n');
-      global.alert(title+'\\n\\n'+detail+(rows.length>15?'\\n…':'')+
-        '\\n\\nLa calibración masiva todavía NO está habilitada. No se modificó ningún registro.');
+      if (!rows.length) { showNotice('No hay evaluaciones elegibles seleccionadas.','warning'); return; }
+      if (rows.length > 25) { showNotice('Máximo 25 evaluaciones por lote.','warning'); return; }
+      if (rows.some(x => !x.evaluationId || !/^EV-\d{4}-\d{2}-\d+$/.test(String(x.evaluationId)))) {
+        showNotice('Falta un identificador oficial de evaluación en la selección.','warning'); return;
+      }
+      const detail = rows.map(x=>String(x.name||x.employeeId)+' ('+String(x.employeeId)+')'+
+        ': auto '+Number(x.selfResult).toFixed(2)+' / líder '+Number(x.leaderResult).toFixed(2)+
+        ' / diferencia '+calibrationGap(x).toFixed(2)).join('\n');
+      if (!global.confirm('CALIBRACIÓN MÚLTIPLE — '+rows.length+' evaluaciones\n\n'+detail+
+        '\n\nSe conservará la calificación del líder sin ajuste (RH = 0).'+
+        '\nLa calibración NO liberará retroalimentación ni firmas.'+
+        '\n¿Confirmas aplicar estos cambios en Airtable?')) return;
+      state.remote.calibrationBatchRunning = true;
+      render();
+      try {
+        const response = apiData(await global.EDDApi.bulkCompleteCalibration(rows.map(x=>String(x.evaluationId))));
+        const results = Array.isArray(response.results) ? response.results : [];
+        const completed = Number(response.completed||0), skipped = Number(response.skipped||0), failed = Number(response.failed||0);
+        const details = results.map(x=>String(x.evaluationId||'')+' — '+String(x.status||'')+
+          (x.reason?' ('+String(x.reason)+')':'')+
+          (Array.isArray(x.warnings)&&x.warnings.length?' ⚠ '+x.warnings.join(', '):'')).join('\n');
+        calibrationBatchSelection.clear();
+        state.remote.calibration = apiData(await global.EDDApi.adminCalibration(true));
+        global.alert('Resultado de calibración múltiple\nCompletadas: '+completed+
+          '\nOmitidas: '+skipped+'\nFallidas: '+failed+
+          '\n\n'+details);
+      } catch (error) {
+        showNotice(error && error.message ? error.message : 'Falló la calibración múltiple.','warning');
+      } finally { state.remote.calibrationBatchRunning = false; render(); }
     },
     setFiltroUsuarios(campo, valor) { state.usuariosFiltros[campo] = valor || undefined; render(); },
     limpiarFiltrosUsuarios() { state.usuariosFiltros = {}; render(); },
