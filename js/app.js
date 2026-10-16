@@ -3159,6 +3159,7 @@
     return row && row.status === 'pending_calibration' && gap !== null && gap <= 0.20
       && row.calibrationStatus !== 'calibration_completed';
   }
+  function calibrationSelectable(row) { const d = calibrationGap(row); return row && row.status === 'pending_calibration' && d !== null && d <= 0.50 && row.calibrationStatus !== 'calibration_completed'; }
   function viewCalibracionLista(periodoId) {
     if (apiReadMode()) {
       const queue = state.remote.calibration || {};
@@ -3166,13 +3167,13 @@
       const calibrated = Array.isArray(queue.calibrated) ? queue.calibrated : [];
       const closed = Array.isArray(queue.closed) ? queue.closed : [];
       const rows = [...pending, ...calibrated, ...closed];
-      const activeKeys = new Set(rows.filter(quickCalibrationEligible).map(x => String(x.employeeId)));
+      const activeKeys = new Set(rows.filter(calibrationSelectable).map(x => String(x.employeeId)));
       for (const key of calibrationBatchSelection) if (!activeKeys.has(key)) calibrationBatchSelection.delete(key);
       const green = pending.filter(quickCalibrationEligible).length;
       const yellow = pending.filter(x => { const v = calibrationGap(x); return v !== null && v > 0.20 && v <= 0.50; }).length;
       const red = pending.filter(x => { const v = calibrationGap(x); return v !== null && v > 0.50; }).length;
       const unknown = pending.filter(x => calibrationGap(x) === null).length;
-      const shown = calibrationBatchOnlyQuick ? rows.filter(quickCalibrationEligible) : rows;
+      const shown = calibrationBatchOnlyQuick ? rows.filter(calibrationSelectable) : rows;
       const statusLabel = x => x.status === 'pending_calibration' ? 'Pendiente' : x.status === 'closed' ? 'Cerrada' : 'Calibrada';
       const score = v => v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? '—' : Number(v).toFixed(2);
       const priority = x => {
@@ -3194,12 +3195,12 @@
             <div><strong>${unknown}</strong><span>Sin comparación</span></div>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-            <button class="btn btn-outline btn-sm" onclick="App.filtrarCalibracionesRapidas()">${calibrationBatchOnlyQuick?'Mostrar todas':'Solo coincidencias altas'}</button>
-            <button class="btn btn-outline btn-sm" onclick="App.seleccionarCalibracionesRapidas()">Seleccionar elegibles (${green})</button>
+            <button class="btn btn-outline btn-sm" onclick="App.filtrarCalibracionesRapidas()">${calibrationBatchOnlyQuick?'Mostrar todas':'Solo diferencias ≤ 0.50'}</button>
+            <button class="btn btn-outline btn-sm" onclick="App.seleccionarCalibracionesRapidas()">Seleccionar elegibles (${green+yellow})</button>
             <button class="btn btn-outline btn-sm" onclick="App.limpiarSeleccionCalibracion()">Limpiar selección</button>
             <button class="btn btn-primary btn-sm" ${calibrationBatchSelection.size?'':'disabled'} onclick="App.previsualizarCalibracionMultiple()">Revisar lote (${calibrationBatchSelection.size})</button>
           </div>
-          <p class="muted" style="margin:12px 0 0">El botón de calibración masiva se habilitará cuando esté disponible y validado el endpoint de n8n. Esta vista no modifica resultados.</p>
+          <p class="muted" style="margin:12px 0 0">Puedes seleccionar diferencias bajas y medias (hasta 0.50). Por seguridad, n8n solo completa en lote diferencias hasta 0.20; las medias requieren revisión individual hasta ampliar el backend.</p>
         </div>
         <div class="card" style="overflow-x:auto">
           <table class="table"><thead><tr><th>Seleccionar</th><th>Colaborador</th><th>Líder</th><th>Autoevaluación</th><th>Evaluación líder</th><th>Diferencia absoluta</th><th>Prioridad</th><th>Estado</th><th>Acción</th></tr></thead><tbody>
@@ -4480,12 +4481,12 @@
     seleccionarCalibracion(id, checked) {
       const rows = (state.remote.calibration && state.remote.calibration.pending) || [];
       const row = rows.find(x => String(x.employeeId) === String(id));
-      if (!quickCalibrationEligible(row)) return;
+      if (!calibrationSelectable(row)) return;
       if (checked) calibrationBatchSelection.add(String(id)); else calibrationBatchSelection.delete(String(id));
       render();
     },
     seleccionarCalibracionesRapidas() {
-      ((state.remote.calibration && state.remote.calibration.pending) || []).filter(quickCalibrationEligible)
+      ((state.remote.calibration && state.remote.calibration.pending) || []).filter(calibrationSelectable)
         .forEach(x => calibrationBatchSelection.add(String(x.employeeId)));
       render();
     },
@@ -4493,8 +4494,15 @@
     async previsualizarCalibracionMultiple() {
       if (state.remote.calibrationBatchRunning) return;
       const rows = ((state.remote.calibration && state.remote.calibration.pending) || [])
-        .filter(x => calibrationBatchSelection.has(String(x.employeeId)) && quickCalibrationEligible(x));
+        .filter(x => calibrationBatchSelection.has(String(x.employeeId)) && calibrationSelectable(x));
       if (!rows.length) { showNotice('No hay evaluaciones elegibles seleccionadas.','warning'); return; }
+      const mediumRows = rows.filter(x => !quickCalibrationEligible(x));
+      if (mediumRows.length) {
+        const items = mediumRows.map(x => String(x.name||x.employeeId)+' · diferencia '+calibrationGap(x).toFixed(2)).join('\\n');
+        global.alert('Hay '+mediumRows.length+' evaluaciones de prioridad MEDIA seleccionadas:\\n'+items+
+          '\\n\\nPor ahora requieren revisión individual. El backend de calibración masiva solo permite diferencias de hasta 0.20; no se envió ningún registro.');
+        return;
+      }
       if (rows.length > 25) { showNotice('Máximo 25 evaluaciones por lote.','warning'); return; }
       if (rows.some(x => !x.evaluationId || !/^EV-\d{4}-\d{2}-\d+$/.test(String(x.evaluationId)))) {
         showNotice('Falta un identificador oficial de evaluación en la selección.','warning'); return;
