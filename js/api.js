@@ -220,10 +220,10 @@
     // momento). Sin el webhookId, n8n devuelve 404 y el navegador nunca llega
     // al workflow -> "No fue posible conectar con el servidor".
     async saveAdminCalibration(evaluationId, payload) { const r=await apiRequest('/1ff38682-54db-4bc4-a8e5-4d6b9af56404/admin/calibration/' + encodeURIComponent(evaluationId), { method: 'PUT', body: payload, timeoutMs: 30000 }); clearReadCache('/admin/calibration'); return r; },
-    async bulkCompleteCalibration(evaluationIds) {
+    async bulkCompleteCalibration(evaluationIds, includeMediumPriority = false) {
       if (!Array.isArray(evaluationIds) || !evaluationIds.length || evaluationIds.length > 25) throw new Error('Selecciona entre 1 y 25 evaluaciones.');
       const r = await apiRequest('/admin/calibration/bulk-complete', {
-        method:'POST', body:{evaluationIds,mode:'no_adjustment',confirmed:true},timeoutMs:120000
+        method:'POST', body:{evaluationIds,mode:'no_adjustment',confirmed:true,includeMediumPriority:includeMediumPriority === true},timeoutMs:120000
       });
       clearReadCache('/admin/calibration'); clearReadCache('/admin/dashboard'); return r;
     },
