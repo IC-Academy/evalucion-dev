@@ -46,7 +46,7 @@
   // limpia. La SESIÓN (login) es independiente de esto: vive en
   // sessionStorage bajo APP_CONFIG.sessionStorageKey (ver auth.js), no en
   // esta clave de localStorage.
-  const STORAGE_KEY = 'edd_interconn_db_v6_rev4_feedback';
+  const STORAGE_KEY = new URLSearchParams(window.location.search).get('edd_test') === '1' ? 'edd_stg_demo_feedback_20261026' : 'edd_interconn_db_v6_rev4_feedback';
   let _db = null; // caché en memoria
 
   // ===========================================================================
