@@ -46,7 +46,7 @@
   // limpia. La SESIÓN (login) es independiente de esto: vive en
   // sessionStorage bajo APP_CONFIG.sessionStorageKey (ver auth.js), no en
   // esta clave de localStorage.
-  const STORAGE_KEY = new URLSearchParams(window.location.search).get('edd_test') === '1' ? 'edd_stg_demo_feedback_20261026' : 'edd_interconn_db_v6_rev4_feedback';
+  const STORAGE_KEY = 'edd_interconn_db_v6_rev4_feedback';
   let _db = null; // caché en memoria
 
   // ===========================================================================
@@ -237,15 +237,6 @@
 
       if (estado === 'retro_pendiente') {
         calibracion.retroHabilitada = true;
-        // Escenario local ficticio: Diego (10004) bajo Ana (20002), listo para guardar acuerdos.
-        if (new URLSearchParams(window.location.search).get('edd_test') === '1' && col.empleado === '10004') {
-          calibracion.reunionLiderRealizada = true;
-          calibracion.fechaReunion = '2026-10-26T09:00:00';
-          calibracion.acuerdosFinales = '';
-          calibracion.acuerdosLiberados = false;
-          calibracion.firmaLider = false;
-          calibracion.firmaColaborador = false;
-        }
         calibracion.historial.push({ campo: 'retroHabilitada', valorAnterior: false, valorNuevo: true, motivo: 'RH habilita fase de retroalimentación', usuario: 'Administrador RH', fecha: '2026-08-03', hora: '09:00' });
         if (nivelBajo) {
           db.areas_oportunidad.push({ id: nextId('AO'), colaboradorId: col.empleado, periodoId, area: 'Cumplimiento de objetivos y estándares de calidad', planMejora: 'Reforzar seguimiento semanal con su líder y revisar prioridades.' });
