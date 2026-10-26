@@ -37,7 +37,9 @@
   'use strict';
 
   const APP_CONFIG = {
-    mode: 'api',
+    mode: new URLSearchParams(window.location.search).get('edd_test') === '1' ? 'demo' : 'api',
+    // Solo en escenario ficticio local; no valida ni emite sesiones de n8n.
+    demoCode: '123456',
 
     // Base de los webhooks de n8n. Sustituir por la URL real del entorno
     // cuando exista. No se usa en modo "demo".
@@ -46,7 +48,7 @@
     // Clave usada en sessionStorage para guardar la sesión (token + usuario).
     // Ver auth.js. Se usa sessionStorage y no localStorage a propósito: el
     // token no debe sobrevivir a que el usuario cierre la pestaña/navegador.
-    sessionStorageKey: 'edd_session',
+    sessionStorageKey: new URLSearchParams(window.location.search).get('edd_test') === '1' ? 'edd_stg_demo_session_v1' : 'edd_session',
 
     // Tiempo máximo (ms) que api.js espera una respuesta antes de abortar la
     // petición y mostrar "Error de conexión".
