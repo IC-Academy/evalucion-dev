@@ -177,7 +177,7 @@
   // ===========================================================================
   const LIDERES = [
     { empleado: '20001', nombre: 'Carlos Martínez', puesto: 'Gerente de Recursos Humanos', area: 'Recursos Humanos', ciudad: 'Ciudad de México', correoCorporativo: 'carlos.martinez@intercon.com.mx', estatusEmpleado: 'Activo', correoValidado: true, ultimaActualizacion: '2026-07-20' },
-    { empleado: '20002', nombre: 'Ana Torres', puesto: 'Gerente de Finanzas', area: 'Finanzas', ciudad: 'Guadalajara', correoCorporativo: 'ana.torres@intercon.com.mx', estatusEmpleado: 'Activo', correoValidado: true, ultimaActualizacion: '2026-07-20' },
+    { empleado: '20002', nombre: 'Ana Torres', puesto: 'Gerente de Finanzas', area: 'Finanzas', ciudad: 'Guadalajara', correoCorporativo: 'jmejiaromero@intercon.com.mx', estatusEmpleado: 'Activo', correoValidado: true, ultimaActualizacion: '2026-07-20' },
     { empleado: '20003', nombre: 'Roberto Díaz', puesto: 'Gerente de Operaciones', area: 'Operaciones', ciudad: 'Monterrey', correoCorporativo: 'roberto.diaz@intercon.com.mx', estatusEmpleado: 'Activo', correoValidado: true, ultimaActualizacion: '2026-07-20' },
     { empleado: '20004', nombre: 'Sofía López', puesto: 'Gerente de Tecnología', area: 'Tecnología', ciudad: 'Ciudad de México', correoCorporativo: 'sofia.lopez@intercon.com.mx', estatusEmpleado: 'Activo', correoValidado: true, ultimaActualizacion: '2026-07-20' },
     { empleado: '20005', nombre: 'Miguel Ángel Ruiz', puesto: 'Gerente Comercial', area: 'Comercial', ciudad: 'Puebla', correoCorporativo: 'miguel.ruiz@intercon.com.mx', estatusEmpleado: 'Activo', correoValidado: true, ultimaActualizacion: '2026-07-20' }
