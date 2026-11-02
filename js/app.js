@@ -1235,7 +1235,7 @@
     if (u.perfil === 'colaborador') {
       tabs = [['inicio', 'Inicio'], ['autoevaluacion', 'Autoevaluación'], ['retroalimentacion', 'Retroalimentación']];
     } else if (u.perfil === 'lider') {
-      tabs = [['dashboard', 'Mi equipo'], ['pendientes', 'Pendientes por evaluar'], ['firmas', 'Por firmar']];
+      tabs = [['dashboard', 'Mi equipo'], ['mi-area', 'Mi área'], ['pendientes', 'Pendientes por evaluar'], ['firmas', 'Por firmar']];
       if (perfilesDisponibles(u).includes('colaborador')) tabs.unshift(['mi-inicio', 'Mi evaluación']);
     } else {
       tabs = [['dashboard', 'Dashboard'], ['calibracion', 'Calibración'], ['9box', 'Matriz 9-Box'], ['usuarios', 'Usuarios'], ['config', 'Configuración']];
@@ -2436,6 +2436,7 @@
     if (page === 'mi-enviado') return renderColaborador('enviado');
     if (page === 'evaluar' && param) return viewLiderEvaluar(lider, param, periodoId);
     if (page === 'comparacion' && param) return viewComparacion(lider, param, periodoId);
+    if (page === 'mi-area') return viewLiderAreaStg();
     if (apiReadMode()) {
       if (page === 'pendientes') return viewLiderDashboardApi(true, false);
       if (page === 'firmas') return viewLiderDashboardApi(false, true);
@@ -2444,6 +2445,43 @@
     if (page === 'pendientes') return viewLiderDashboard(lider, periodoId, true, false);
     if (page === 'firmas') return viewLiderDashboard(lider, periodoId, false, true);
     return viewLiderDashboard(lider, periodoId, false, false);
+  }
+
+  // STG phase 1: real, session-scoped direct team only. No cross-hierarchy data
+  // or individual scores until a dedicated authorization-enforcing endpoint exists.
+  function viewLiderAreaStg() {
+    if (!apiReadMode()) return '<section class="card"><h2>Mi área</h2><p>Disponible únicamente con sesión conectada al backend.</p></section>';
+    const raw = state.remote.team || {};
+    const team = Array.isArray(raw.team) ? raw.team : [];
+    const done = x => /submitted|completada|enviada/i.test(String(x.leaderStatus || '')) &&
+      !/draft|reabierta|progreso/i.test(String(x.processState || ''));
+    const selfDone = x => /submitted|completada|enviada|leader_submitted/i.test(String(x.selfStatus || ''));
+    const pending = team.filter(x => !done(x)).length;
+    return `<section class="backend-live-section">
+      <div class="card" style="padding:24px;margin-bottom:18px;background:linear-gradient(115deg,#0b2b51,#165f9d);color:#fff">
+        <div style="font-size:12px;letter-spacing:1.5px;color:#bddbfa">EDD MÉXICO · MÓDULO LÍDER</div>
+        <h2 style="color:white;margin:10px 0">Mi área · seguimiento del desempeño</h2>
+        <p style="color:#d7e7f8">Primera fase conectada a datos reales de tu equipo directo. La visualización jerárquica y las calificaciones de líderes subordinados se habilitarán tras implementar y validar los permisos del backend.</p>
+        <span style="display:inline-block;margin-top:10px;padding:5px 12px;border-radius:20px;background:#ffffff22;color:white">STG · FASE DE INTEGRACIÓN</span>
+      </div>
+      <div class="kpi-grid">
+        ${kpi('Mi equipo directo',team.length)}
+        ${kpi('Autoevaluaciones enviadas',team.filter(selfDone).length)}
+        ${kpi('Evaluaciones del líder enviadas',team.filter(done).length)}
+        ${kpi('Requieren seguimiento',pending,pending?'yellow':'gray')}
+      </div>
+      <div class="card" style="margin-top:17px">
+        <div class="admin-panel-head"><div><span class="admin-section-kicker">CONSULTA POR COLABORADOR</span><h2>Resultados y estatus del equipo directo</h2>
+        <p>Consulta restringida a las personas devueltas por tu sesión autenticada.</p></div>
+        <button class="btn btn-outline btn-sm" onclick="App.recargarBackend()">Actualizar</button></div>
+        <div class="admin-table-wrap"><table class="table"><thead><tr><th>Colaborador</th><th>Área</th><th>Autoevaluación</th><th>Evaluación del líder</th><th>Proceso</th><th>Resultado</th></tr></thead><tbody>
+          ${team.map(x => `<tr><td><div class="backend-person-cell"><strong>${esc(x.name||x.employeeName||x.employeeId||'—')}</strong><small>${esc(x.employeeId||'')}</small></div></td><td>${esc(x.area||'—')}</td><td>${badge(x.selfStatus||'—')}</td><td>${badge(x.leaderStatus||'—')}</td><td>${badge(x.processState||'—')}</td><td>${done(x)?'En preparación':'No disponible hasta envío válido'}</td></tr>`).join('')||'<tr><td colspan="6">Sin colaboradores disponibles para esta sesión.</td></tr>'}
+        </tbody></table></div>
+      </div>
+      <div class="card" style="margin-top:17px;padding:22px"><h2>Próxima integración: líderes subordinados y 9-Box</h2>
+        <p>El alcance jerárquico debe resolverse en n8n desde la identidad de la sesión, incluyendo asignaciones activas, empleados elegibles y evaluaciones no reabiertas. Ninguna calificación ajena al equipo directo se consultará desde el navegador sin esta autorización.</p>
+        <p style="margin-top:10px"><a class="btn btn-outline" href="lider-preview.html" target="_blank" rel="noopener">Abrir prototipo de diseño aprobado ↗</a></p>
+      </div></section>`;
   }
 
   function viewLiderDashboardApi(soloPendientes, soloFirmas) {
