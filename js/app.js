@@ -2447,12 +2447,39 @@
     return viewLiderDashboard(lider, periodoId, false, false);
   }
 
+  // STG-only visual review data: a non-operational copy of Armando's direct
+  // team for 255989. Never changes assignments, scores or real session scope.
+  function leaderDemoMode() {
+    return apiReadMode() && String(state.user && state.user.empleado) === '255989';
+  }
+  function leaderDemoTeam() {
+    const list = [
+      ['72640','VEGA PEREZ ROBERTO','FACTURACION Y COBRANZA','done'],
+      ['154274','MARTINEZ TRILLA JORGE ANTONIO','ADMINISTRACION DE CONTRATOS IC WEB','done'],
+      ['132707','MOYOTL PALACIOS MARIA SUSANA','FACTURACION Y COBRANZA','done'],
+      ['252604','VAZQUEZ RECENDIZ JUANA','FACTURACION Y COBRANZA','done'],
+      ['253031','RAMIREZ CHAVEZ LESLIE JARUMI','FACTURACION Y COBRANZA','wait'],
+      ['217003','DIAZ REYES CLAUDIA BEATRIZ','FACTURACION Y COBRANZA','done'],
+      ['106455','FRAGOSO PRADO MARICELA','TESORERIA','done'],
+      ['162083','FERNANDEZ ESPARZA FRANCES JOLANTA','NOMINAS','done'],
+      ['238951','AVINA TAVARES FERNANDO MATIAS','FINANZAS','draft'],
+      ['150949','CAMPOS LUNA GEORGINA','FACTURACION Y COBRANZA','done'],
+      ['44512','MONDRAGON MARCO ANTONIO','FACTURACION Y COBRANZA','done']
+    ];
+    return list.map(([employeeId,name,area,state]) => ({
+      employeeId,name,area,position:'Vista demostrativa',selfStatus:state==='wait'?'Pendiente':'Completada',
+      leaderStatus:state==='done'?'Completada':state==='draft'?'En progreso':'Pendiente',
+      processState:state==='draft'?'Evaluación reabierta':state==='done'?'Pendiente de calibración':'Autoevaluación pendiente',
+      __preview:true
+    }));
+  }
+
   // STG phase 1: real, session-scoped direct team only. No cross-hierarchy data
   // or individual scores until a dedicated authorization-enforcing endpoint exists.
   function viewLiderAreaStg() {
     if (!apiReadMode()) return '<section class="card"><h2>Mi área</h2><p>Disponible únicamente con sesión conectada al backend.</p></section>';
     const raw = state.remote.team || {};
-    const team = Array.isArray(raw.team) ? raw.team : [];
+    const team = leaderDemoMode() ? leaderDemoTeam() : (Array.isArray(raw.team) ? raw.team : []);
     const done = x => /submitted|completada|enviada/i.test(String(x.leaderStatus || '')) &&
       !/draft|reabierta|progreso/i.test(String(x.processState || ''));
     const selfDone = x => /submitted|completada|enviada|leader_submitted/i.test(String(x.selfStatus || ''));
@@ -2486,13 +2513,13 @@
 
   function viewLiderDashboardApi(soloPendientes, soloFirmas) {
     const data = state.remote.team || {};
-    let team = Array.isArray(data.team) ? data.team.slice() : [];
+    let team = leaderDemoMode() ? leaderDemoTeam() : (Array.isArray(data.team) ? data.team.slice() : []);
     if (soloPendientes) team = team.filter(x => /pendiente|no iniciada|en progreso/i.test(String(x.leaderStatus || x.processState || '')));
     if (soloFirmas) team = team.filter(x => !!x.leaderSignaturePending);
     const pendingEval = team.filter(x => /pendiente|no iniciada|en progreso/i.test(String(x.leaderStatus || x.processState || ''))).length;
     const pendingLeaderSignature = team.filter(x => x.leaderSignaturePending).length;
     const pendingEmployeeSignature = team.filter(x => x.employeeSignaturePending).length;
-    return `<section class="backend-live-section"><div class="kpi-grid">${kpi('Colaboradores',team.length)}${kpi('Pendientes por evaluar',pendingEval,pendingEval?'yellow':'gray')}${kpi('Por firmar líder',pendingLeaderSignature,pendingLeaderSignature?'red':'gray')}${kpi('Firma colaborador pendiente',pendingEmployeeSignature,pendingEmployeeSignature?'yellow':'gray')}</div><div class="card"><div class="admin-panel-head"><div><span class="admin-section-kicker">SEGUIMIENTO</span><h2>${soloFirmas?'Pendientes por firmar':soloPendientes?'Pendientes por evaluar':'Mi equipo'}</h2><p>Consulta el avance de tu equipo y las acciones que requieren seguimiento.</p></div><button class="btn btn-outline btn-sm" onclick="App.recargarBackend()">Actualizar</button></div><div class="admin-table-wrap"><table class="table"><thead><tr><th>Nombre</th><th>Puesto</th><th>Área</th><th>Autoevaluación</th><th>Evaluación líder</th><th>Proceso</th><th>Retroalimentación</th><th>Firma</th><th></th></tr></thead><tbody>${team.map(x=>{const selfReady=/submitted|completada|enviada|pendiente.*l[ií]der/i.test(String(x.selfStatus||x.processState||''));const leaderDone=/submitted|completada|enviada/i.test(String(x.leaderStatus||''));return `<tr><td><div class="backend-person-cell"><strong>${esc(x.name||x.employeeName||x.employeeId)}</strong><small>${esc(x.employeeId||'')}</small></div></td><td>${esc(x.position||'—')}</td><td>${esc(x.area||'—')}</td><td>${badge(x.selfStatus||'—')}</td><td>${badge(x.leaderStatus||'—')}</td><td>${badge(x.processState||'—')}</td><td>${badge(x.feedbackState||'—')}</td><td>${x.leaderSignaturePending?badge('Pendiente líder','red'):x.employeeSignaturePending?badge('Pendiente colaborador','yellow'):'—'}</td><td>${selfReady&&!leaderDone&&x.evaluationId?`<button class="btn btn-primary btn-sm" onclick="App.abrirEvaluacionLider('${esc(x.employeeId)}','${esc(x.evaluationId)}')">Evaluar</button>`:leaderDone&&x.evaluationId?`<button class="btn btn-outline btn-sm" onclick="App.abrirComparacionLider('${esc(x.employeeId)}','${esc(x.evaluationId)}')">Ver seguimiento</button>`:'<span class="muted">Esperando autoevaluación</span>'}</td></tr>`}).join('')||`<tr><td colspan="9" class="muted">Sin acuerdos listos para firma. Las retroalimentaciones recién liberadas aparecen primero en Mi equipo como Pendiente de reunión; después de confirmar la reunión y liberar acuerdos pasarán a esta vista.</td></tr>`}</tbody></table></div><p class="backend-read-note">La información se actualiza conforme avanza cada etapa del proceso.</p></div></section>`;
+    return `<section class="backend-live-section">${leaderDemoMode()?'<div class="alert alert-info" style="margin-bottom:15px"><b>MODO VISTA PREVIA STG:</b> equipo de Armando replicado visualmente para 255989. Estados ilustrativos. No se pueden ejecutar evaluaciones ni firmas sobre estas filas.</div>':''}<div class="kpi-grid">${kpi('Colaboradores',team.length)}${kpi('Pendientes por evaluar',pendingEval,pendingEval?'yellow':'gray')}${kpi('Por firmar líder',pendingLeaderSignature,pendingLeaderSignature?'red':'gray')}${kpi('Firma colaborador pendiente',pendingEmployeeSignature,pendingEmployeeSignature?'yellow':'gray')}</div><div class="card"><div class="admin-panel-head"><div><span class="admin-section-kicker">SEGUIMIENTO</span><h2>${soloFirmas?'Pendientes por firmar':soloPendientes?'Pendientes por evaluar':'Mi equipo'}</h2><p>Consulta el avance de tu equipo y las acciones que requieren seguimiento.</p></div><button class="btn btn-outline btn-sm" onclick="App.recargarBackend()">Actualizar</button></div><div class="admin-table-wrap"><table class="table"><thead><tr><th>Nombre</th><th>Puesto</th><th>Área</th><th>Autoevaluación</th><th>Evaluación líder</th><th>Proceso</th><th>Retroalimentación</th><th>Firma</th><th></th></tr></thead><tbody>${team.map(x=>{const selfReady=/submitted|completada|enviada|pendiente.*l[ií]der/i.test(String(x.selfStatus||x.processState||''));const leaderDone=/submitted|completada|enviada/i.test(String(x.leaderStatus||''));return `<tr><td><div class="backend-person-cell"><strong>${esc(x.name||x.employeeName||x.employeeId)}</strong><small>${esc(x.employeeId||'')}</small></div></td><td>${esc(x.position||'—')}</td><td>${esc(x.area||'—')}</td><td>${badge(x.selfStatus||'—')}</td><td>${badge(x.leaderStatus||'—')}</td><td>${badge(x.processState||'—')}</td><td>${badge(x.feedbackState||'—')}</td><td>${x.leaderSignaturePending?badge('Pendiente líder','red'):x.employeeSignaturePending?badge('Pendiente colaborador','yellow'):'—'}</td><td>${!x.__preview&&selfReady&&!!x.__preview&&leaderDone&&x.evaluationId?`<button class="btn btn-primary btn-sm" onclick="App.abrirEvaluacionLider('${esc(x.employeeId)}','${esc(x.evaluationId)}')">Evaluar</button>`:leaderDone&&x.evaluationId?`<button class="btn btn-outline btn-sm" onclick="App.abrirComparacionLider('${esc(x.employeeId)}','${esc(x.evaluationId)}')">Ver seguimiento</button>`:'<span class="muted">Esperando autoevaluación</span>'}</td></tr>`}).join('')||`<tr><td colspan="9" class="muted">Sin acuerdos listos para firma. Las retroalimentaciones recién liberadas aparecen primero en Mi equipo como Pendiente de reunión; después de confirmar la reunión y liberar acuerdos pasarán a esta vista.</td></tr>`}</tbody></table></div><p class="backend-read-note">La información se actualiza conforme avanza cada etapa del proceso.</p></div></section>`;
   }
 
   function viewLiderDashboard(lider, periodoId, soloPendientes, soloFirmas) {
