@@ -2476,40 +2476,35 @@
 
   // STG phase 1: real, session-scoped direct team only. No cross-hierarchy data
   // or individual scores until a dedicated authorization-enforcing endpoint exists.
+  // STG: visual-only executive navigation; never queries other users or writes.
   function viewLiderAreaStg() {
-    if (!apiReadMode()) return '<section class="card"><h2>Mi área</h2><p>Disponible únicamente con sesión conectada al backend.</p></section>';
-    const raw = state.remote.team || {};
-    const team = leaderDemoMode() ? leaderDemoTeam() : (Array.isArray(raw.team) ? raw.team : []);
-    const done = x => /submitted|completada|enviada/i.test(String(x.leaderStatus || '')) &&
-      !/draft|reabierta|progreso/i.test(String(x.processState || ''));
-    const selfDone = x => /submitted|completada|enviada|leader_submitted/i.test(String(x.selfStatus || ''));
-    const pending = team.filter(x => !done(x)).length;
-    return `<section class="backend-live-section">
-      <div class="card" style="padding:24px;margin-bottom:18px;background:linear-gradient(115deg,#0b2b51,#165f9d);color:#fff">
-        <div style="font-size:12px;letter-spacing:1.5px;color:#bddbfa">EDD MÉXICO · MÓDULO LÍDER</div>
-        <h2 style="color:white;margin:10px 0">Mi área · seguimiento del desempeño</h2>
-        <p style="color:#d7e7f8">Primera fase conectada a datos reales de tu equipo directo. La visualización jerárquica y las calificaciones de líderes subordinados se habilitarán tras implementar y validar los permisos del backend.</p>
-        <span style="display:inline-block;margin-top:10px;padding:5px 12px;border-radius:20px;background:#ffffff22;color:white">STG · FASE DE INTEGRACIÓN</span>
-      </div>
-      <div class="kpi-grid">
-        ${kpi('Mi equipo directo',team.length)}
-        ${kpi('Autoevaluaciones enviadas',team.filter(selfDone).length)}
-        ${kpi('Evaluaciones del líder enviadas',team.filter(done).length)}
-        ${kpi('Requieren seguimiento',pending,pending?'yellow':'gray')}
-      </div>
-      <div class="card" style="margin-top:17px">
-        <div class="admin-panel-head"><div><span class="admin-section-kicker">CONSULTA POR COLABORADOR</span><h2>Resultados y estatus del equipo directo</h2>
-        <p>Consulta restringida a las personas devueltas por tu sesión autenticada.</p></div>
-        <button class="btn btn-outline btn-sm" onclick="App.recargarBackend()">Actualizar</button></div>
-        <div class="admin-table-wrap"><table class="table"><thead><tr><th>Colaborador</th><th>Área</th><th>Autoevaluación</th><th>Evaluación del líder</th><th>Proceso</th><th>Resultado</th></tr></thead><tbody>
-          ${team.map(x => `<tr><td><div class="backend-person-cell"><strong>${esc(x.name||x.employeeName||x.employeeId||'—')}</strong><small>${esc(x.employeeId||'')}</small></div></td><td>${esc(x.area||'—')}</td><td>${badge(x.selfStatus||'—')}</td><td>${badge(x.leaderStatus||'—')}</td><td>${badge(x.processState||'—')}</td><td>${done(x)?'En preparación':'No disponible hasta envío válido'}</td></tr>`).join('')||'<tr><td colspan="6">Sin colaboradores disponibles para esta sesión.</td></tr>'}
-        </tbody></table></div>
-      </div>
-      <div class="card" style="margin-top:17px;padding:22px"><h2>Próxima integración: líderes subordinados y 9-Box</h2>
-        <p>El alcance jerárquico debe resolverse en n8n desde la identidad de la sesión, incluyendo asignaciones activas, empleados elegibles y evaluaciones no reabiertas. Ninguna calificación ajena al equipo directo se consultará desde el navegador sin esta autorización.</p>
-        <p style="margin-top:10px"><a class="btn btn-outline" href="lider-preview.html" target="_blank" rel="noopener">Abrir prototipo de diseño aprobado ↗</a></p>
-      </div></section>`;
+    const preview = leaderDemoMode();
+    const team = preview ? leaderDemoTeam() : (Array.isArray((state.remote.team||{}).team)?state.remote.team.team:[]);
+    const getStatus=x => String(x.leaderStatus||'').toLowerCase();
+    const complete=x=>/completada|submitted|enviada/.test(getStatus(x))&&!/reabierta|draft|progreso/.test(String(x.processState||'').toLowerCase());
+    const done=team.filter(complete).length, pending=team.length-done;
+    const selected=String(state.leaderAreaSelected||'todos');
+    const subordinate = team.filter(x=>/lider/i.test(String(x.position||''))||['154274','106455','162083','238951'].includes(String(x.employeeId)));
+    const groupOptions=preview?[['todos','Toda la estructura'],['directo','Equipo directo'],['154274','Jorge Antonio Martínez'],['106455','Maricela Fragoso'],['162083','Frances Fernández'],['238951','Fernando Aviña']]:[['todos','Equipo autorizado']];
+    const activeGroup=groupOptions.some(x=>x[0]===selected)?selected:'todos';
+    const displayed=activeGroup==='todos'||activeGroup==='directo'?team:team.filter(x=>String(x.employeeId)===activeGroup);
+    const score=preview?{72640:[4.12,3.96],154274:[4.53,4.20],132707:[4.01,3.86],252604:[4.25,4.08],253031:[null,null],217003:[4.3,4.03],106455:[4.41,4.13],162083:[4.26,4.05],238951:[4.52,null],150949:[4.12,3.92],44512:[4.36,3.98]}:{};
+    const scoreText=(n)=>Number.isFinite(n)?Number(n).toFixed(2):'—';
+    const stage=x=>complete(x)?'Enviada · preliminar':/reabierta|draft|progreso/i.test(String(x.processState||'')+' '+getStatus(x))?'Reabierta / en progreso':'Pendiente';
+    const row=x=>{const val=score[String(x.employeeId)]||[null,null];return '<tr><td><strong>'+esc(x.name||x.employeeName||x.employeeId||'—')+'</strong><br><small>'+esc(x.employeeId||'')+'</small></td><td>'+esc(x.area||'—')+'</td><td>'+esc(x.selfStatus||'—')+'</td><td>'+esc(stage(x))+'</td><td>'+ (preview?scoreText(val[0]):'—')+'</td><td>'+ (preview&&complete(x)?scoreText(val[1]):'—')+'</td><td>'+(preview?'<button class="btn btn-outline btn-sm" onclick="App.abrirExpedienteAreaStg(\''+esc(x.employeeId)+'\')">Ver expediente</button>':'<span class="muted">Próxima integración</span>')+'</td></tr>'};
+    const subHtml=subordinate.length?subordinate.map(x=>'<button type="button" class="btn btn-outline" style="margin:5px" onclick="App.filtrarAreaStg(\''+esc(x.employeeId)+'\')">'+esc(x.name||x.employeeId)+' →</button>').join(''):'<span class="muted">La estructura subordinada estará disponible con el nuevo backend.</span>';
+    return `<section class="backend-live-section" style="padding-bottom:25px">
+      <div class="card" style="padding:25px;background:linear-gradient(110deg,#0a2d55,#145c9d);color:#fff;margin-bottom:18px"><div style="font-size:11px;letter-spacing:1.8px;color:#c5dcf5">EDD MÉXICO · PANEL EJECUTIVO</div><h2 style="color:white;font-size:27px;margin:6px 0">Mi área · desempeño de mi estructura</h2><p style="color:#d5e8fa">Consulta jerárquica, resultados individuales, comparativos y 9-Box.</p><p style="font-size:12px;color:#fce6a9;margin-top:12px">${preview?'VISTA DEMOSTRATIVA: nombres de referencia reales; calificaciones y estados ilustrativos. Sin cambios en evaluaciones.':'Datos de equipo directo únicamente. No se exponen resultados de terceros hasta completar autorización del backend.'}</p></div>
+      <div class="kpi-grid">${kpi('Colaboradores visibles',team.length)}${kpi('Evaluaciones enviadas',done)}${kpi('Requieren seguimiento',pending,pending?'yellow':'gray')}${kpi('Líderes identificados',subordinate.length)}</div>
+      <div class="card" style="padding:20px;margin-top:18px"><div class="admin-panel-head"><div><span class="admin-section-kicker">ESTRUCTURA ORGANIZACIONAL</span><h2>Responsables dentro de mi área</h2><p>Selecciona un líder para revisar su expediente o el alcance disponible.</p></div><button class="btn btn-outline" onclick="App.filtrarAreaStg('todos')">Toda la estructura</button></div>${subHtml}</div>
+      <div class="card" style="padding:20px;margin-top:18px"><div class="admin-panel-head"><div><span class="admin-section-kicker">RESULTADOS Y SEGUIMIENTO</span><h2>Expedientes de colaboradores</h2><p>${preview?'Calificaciones demostrativas únicamente; no son datos de Airtable.':'El resultado individual se habilitará desde un endpoint jerárquico autorizado.'}</p></div><select id="leaderAreaFilter" style="padding:10px;border:1px solid #dce6ef;border-radius:9px" onchange="App.filtrarAreaStg(this.value)">${groupOptions.map(([v,t])=>'<option value="'+v+'" '+(activeGroup===v?'selected':'')+'>'+t+'</option>').join('')}</select></div>
+       <div class="admin-table-wrap"><table class="table"><thead><tr><th>Colaborador</th><th>Área</th><th>Autoevaluación</th><th>Evaluación líder</th><th>Auto (1-5)</th><th>Líder (1-5)</th><th>Detalle</th></tr></thead><tbody>${displayed.map(row).join('')||'<tr><td colspan="7">Sin resultados para el filtro seleccionado.</td></tr>'}</tbody></table></div></div>
+      <div class="card" style="margin-top:18px;padding:22px"><div class="admin-panel-head"><div><span class="admin-section-kicker">TALENTO</span><h2>Distribución 9-Box de mi área</h2><p>Vertical: valores y actitud · Horizontal: desempeño. ${preview?'Distribución ilustrativa.':'Pendiente de métricas autorizadas.'}</p></div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-width:750px;margin:18px auto 5px">${(preview?[2,1,2,1,2,1,0,1,1]:[0,0,0,0,0,0,0,0,0]).map((n,i)=>'<div style="background:'+(i<3?'#d6ede3':i<6?'#eaf0df':'#f7e6d9')+';border:1px solid #d7e0e9;border-radius:8px;min-height:65px;display:grid;place-items:center;font-size:24px;font-weight:750">'+(preview?n:'—')+'</div>').join('')}</div><p style="text-align:center;font-size:12px">Desempeño → · Lectura por cuadrantes (demostración)</p></div>
+      <p class="backend-read-note" style="margin-top:15px">STG · Funcionalidad de consulta. Sin modificaciones al backend, sin reasignaciones y sin permisos administrativos.</p>
+    </section>`;
   }
+
 
   function viewLiderDashboardApi(soloPendientes, soloFirmas) {
     const data = state.remote.team || {};
@@ -3749,6 +3744,21 @@
       }catch(e){
         showNotice(e&&e.message?e.message:'No fue posible liberar el resultado.','warning');
       }finally{state.remote.calibrationReleasing=false;render();}
+    },
+    filtrarAreaStg(key){ state.leaderAreaSelected=String(key||'todos'); render(); },
+    abrirExpedienteAreaStg(employeeId){
+      if(!leaderDemoMode()){showNotice('El expediente de supervisión requiere autorización del backend.','warning');return;}
+      const p=leaderDemoTeam().find(x=>String(x.employeeId)===String(employeeId));
+      if(!p)return;
+      const scores={72640:[4.12,3.96],154274:[4.53,4.20],132707:[4.01,3.86],252604:[4.25,4.08],253031:[null,null],217003:[4.3,4.03],106455:[4.41,4.13],162083:[4.26,4.05],238951:[4.52,null],150949:[4.12,3.92],44512:[4.36,3.98]};
+      const [self,leader]=scores[String(employeeId)]||[null,null];
+      const valid=/completada/i.test(String(p.leaderStatus||''))&&!/reabierta|progreso/i.test(String(p.processState||''));
+      const score=v=>Number.isFinite(v)?Number(v).toFixed(2):'—';
+      const old=document.getElementById('leaderStgModal');if(old)old.remove();
+      const modal=document.createElement('div');modal.id='leaderStgModal';
+      modal.style.cssText='position:fixed;inset:0;z-index:99999;background:#071c34b8;display:flex;align-items:center;justify-content:center;padding:24px';
+      modal.innerHTML='<div role="dialog" aria-modal="true" style="background:#f5f8fc;border-radius:18px;width:min(920px,100%);max-height:90vh;overflow:auto;box-shadow:0 20px 70px #0004"><header style="background:linear-gradient(100deg,#092a50,#1761a2);color:white;padding:24px 28px;border-radius:18px 18px 0 0"><button type="button" style="float:right;background:#ffffff24;border:1px solid #ffffff66;color:white;border-radius:8px;padding:8px 13px;cursor:pointer" onclick="document.getElementById(\'leaderStgModal\').remove()">Cerrar ×</button><small>EXPEDIENTE EJECUTIVO · VISTA ILUSTRATIVA</small><h2 style="color:white;margin:10px 0">'+esc(p.name)+'</h2><span>'+esc(p.area)+' · '+esc(employeeId)+'</span></header><div style="padding:25px"><p style="color:#8d6100;font-weight:700">DATOS DEMOSTRATIVOS. No son resultados reales.</p><div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">'+[['Autoevaluación',score(self)],['Evaluación líder',valid?score(leader):'—'],['Brecha auto vs. líder',valid&&self!=null&&leader!=null?score(self-leader):'—'],['Calibración','Pendiente']].map(v=>'<div style="background:#fff;padding:18px;border:1px solid #dfe8f2;border-radius:12px"><small>'+v[0]+'</small><h2 style="margin:7px 0">'+v[1]+'</h2></div>').join('')+'</div><div class="card" style="margin-top:20px;padding:20px"><h2>Perfil de desempeño vs. ideal</h2><p>Comparativo demostrativo por dimensión</p>'+[['Valores y actitud',.92],['Habilidades y conocimientos',.84],['Objetivos',.88]].map(([label,n])=>'<div style="margin-top:18px"><b>'+label+'</b><div style="height:11px;background:#e6eff7;border-radius:10px;margin-top:7px"><div style="height:100%;width:'+(valid?n*100:0)+'%;background:#2c85c8;border-radius:10px"></div></div></div>').join('')+'</div><p style="margin-top:16px">El resultado del líder es preliminar hasta la calibración. Las evaluaciones reabiertas no se presentan como enviadas.</p></div></div>';
+      modal.addEventListener('click',e=>{if(e.target===modal)modal.remove()});document.body.appendChild(modal);
     },
     seleccionarPerfil(perfil) {
       const baseUser = A.getAppUser();
