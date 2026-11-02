@@ -33,9 +33,10 @@ const badge=document.createElement('span');badge.textContent=data.people.length+
 button.append(title,badge);button.addEventListener('click',()=>selectTeam(id));area.append(button);
 });
 const legacyButtons=Array.from(card.querySelectorAll('button')).filter(b=>Object.values(teams).some(g=>b.textContent.includes(g.name)));
-legacyButtons.forEach(b=>b.hidden=true);
+legacyButtons.forEach(b=>{b.hidden=true;b.style.setProperty('display','none','important');b.setAttribute('aria-hidden','true');});
 card.append(area);
 }
+Array.from(card.querySelectorAll('button')).filter(b=>!b.closest('#stgLeaderHierarchy')&&Object.values(teams).some(g=>b.textContent.includes(g.name))).forEach(b=>{b.hidden=true;b.style.setProperty('display','none','important');});
 card.querySelectorAll('#stgLeaderHierarchy button').forEach(b=>{
 const selected=b.dataset.manager===current;
 b.style.background=selected?'#0e4e8c':'#fff';b.style.color=selected?'#fff':'#103b64';
