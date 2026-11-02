@@ -2499,8 +2499,17 @@
       <div class="card" style="padding:20px;margin-top:18px"><div class="admin-panel-head"><div><span class="admin-section-kicker">ESTRUCTURA ORGANIZACIONAL</span><h2>Responsables dentro de mi área</h2><p>Selecciona un líder para revisar su expediente o el alcance disponible.</p></div><button class="btn btn-outline" onclick="App.filtrarAreaStg('todos')">Toda la estructura</button></div>${subHtml}</div>
       <div class="card" style="padding:20px;margin-top:18px"><div class="admin-panel-head"><div><span class="admin-section-kicker">RESULTADOS Y SEGUIMIENTO</span><h2>Expedientes de colaboradores</h2><p>${preview?'Calificaciones demostrativas únicamente; no son datos de Airtable.':'El resultado individual se habilitará desde un endpoint jerárquico autorizado.'}</p></div><select id="leaderAreaFilter" style="padding:10px;border:1px solid #dce6ef;border-radius:9px" onchange="App.filtrarAreaStg(this.value)">${groupOptions.map(([v,t])=>'<option value="'+v+'" '+(activeGroup===v?'selected':'')+'>'+t+'</option>').join('')}</select></div>
        <div class="admin-table-wrap"><table class="table"><thead><tr><th>Colaborador</th><th>Área</th><th>Autoevaluación</th><th>Evaluación líder</th><th>Auto (1-5)</th><th>Líder (1-5)</th><th>Detalle</th></tr></thead><tbody>${displayed.map(row).join('')||'<tr><td colspan="7">Sin resultados para el filtro seleccionado.</td></tr>'}</tbody></table></div></div>
-      <div class="card" style="margin-top:18px;padding:22px"><div class="admin-panel-head"><div><span class="admin-section-kicker">TALENTO</span><h2>Distribución 9-Box de mi área</h2><p>Vertical: valores y actitud · Horizontal: desempeño. ${preview?'Distribución ilustrativa.':'Pendiente de métricas autorizadas.'}</p></div></div>
-      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-width:750px;margin:18px auto 5px">${(preview?[2,1,2,1,2,1,0,1,1]:[0,0,0,0,0,0,0,0,0]).map((n,i)=>'<div style="background:'+(i<3?'#d6ede3':i<6?'#eaf0df':'#f7e6d9')+';border:1px solid #d7e0e9;border-radius:8px;min-height:65px;display:grid;place-items:center;font-size:24px;font-weight:750">'+(preview?n:'—')+'</div>').join('')}</div><p style="text-align:center;font-size:12px">Desempeño → · Lectura por cuadrantes (demostración)</p></div>
+      <div class="card" style="margin-top:18px;padding:22px"><div class="admin-panel-head"><div><span class="admin-section-kicker">TALENTO · MATRIZ REV4</span><h2>Matriz 9-Box de mi área</h2><p>Mismo componente, nombres de cuadrantes, colores y ejes que el módulo Administrador.</p></div></div>
+      ${(()=> {
+         const demoQuadrants={'72640':5,'154274':8,'132707':4,'252604':6,'217003':5,'106455':9,'162083':8,'150949':3,'44512':6};
+         const occupants=preview?displayed.filter(complete).filter(x=>demoQuadrants[String(x.employeeId)]).map(x=>({empleado:String(x.employeeId),nombre:x.name,cuadrante:demoQuadrants[String(x.employeeId)],destacado:false})):[];
+         const grid=global.EDDCharts&&global.EDDCharts.renderNineBoxFull?global.EDDCharts.renderNineBoxFull({ocupantes:occupants,onCellClickJs:num=>'App.verCuadranteAreaStg('+num+')',onMarkerClickJs:id=>"App.abrirExpedienteAreaStg('"+id+"')"}):'<p class="muted">Componente 9-Box no disponible.</p>';
+         const info=C.CUADRANTES_INFO[state.leaderAreaBoxSelected]||null;
+         const members=info?occupants.filter(x=>x.cuadrante===state.leaderAreaBoxSelected):[];
+         const detail=info?'<div class="cuadrante-detail"><h4>'+esc(info.numero+' · '+info.nombre)+'</h4><p>'+esc(info.significado)+'</p><p><strong>Seguimiento:</strong> '+esc(info.seguimiento)+'</p><h4>Colaboradores del cuadrante</h4><ul>'+(members.map(x=>'<li><button class="btn btn-outline btn-sm" onclick="App.abrirExpedienteAreaStg(\\\''+esc(x.empleado)+'\\\')">'+esc(x.nombre)+'</button></li>').join('')||'<li>Sin colaboradores en esta selección.</li>')+'</ul></div>':'<p class="muted">Selecciona Black Spot, Sol, Cosecha u otro cuadrante para consultar su significado y los colaboradores asociados.</p>';
+         return '<p class="backend-read-note">'+(preview?'Solo para validación visual: ubicaciones y calificaciones ficticias; no son resultados reales.':'La matriz real se habilitará al autorizar el nuevo endpoint jerárquico.')+'</p>'+grid+detail;
+      })()}
+      </div>
       <p class="backend-read-note" style="margin-top:15px">STG · Funcionalidad de consulta. Sin modificaciones al backend, sin reasignaciones y sin permisos administrativos.</p>
     </section>`;
   }
@@ -3745,6 +3754,7 @@
         showNotice(e&&e.message?e.message:'No fue posible liberar el resultado.','warning');
       }finally{state.remote.calibrationReleasing=false;render();}
     },
+    verCuadranteAreaStg(numero){ state.leaderAreaBoxSelected=Number(numero); render(); },
     filtrarAreaStg(key){ state.leaderAreaSelected=String(key||'todos'); render(); },
     abrirExpedienteAreaStg(employeeId){
       if(!leaderDemoMode()){showNotice('El expediente de supervisión requiere autorización del backend.','warning');return;}
