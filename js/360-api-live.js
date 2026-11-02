@@ -7,7 +7,7 @@ const EP={
   detail:id=>`/bae3245d-e30a-4eda-9379-0cbbb8d97fa2/360/assignments/${encodeURIComponent(id)}`,
   draft:id=>`/2f8ba0d8-d39e-404f-b828-c14ad99f52ba/360/assignments/${encodeURIComponent(id)}/draft`,
   submit:id=>`/e5e1cdbc-b693-4fbc-84d0-37542073bc2c/360/assignments/${encodeURIComponent(id)}/submit`,
-  distribution:'/360/admin/assignment-distribution',dashboard:'/360/admin/dashboard',
+  distribution:'/360/admin/assignment-distribution',dashboard:'/360/admin/dashboard',participants:'/360/admin/participants',
   activate:id=>`/32a74a6c-372d-4786-89f2-241db3a8a4e4/360/admin/campaign/${encodeURIComponent(id)}/activate`,
   close:id=>`/f9c08c42-a61c-4f11-9d97-47bbd477465c/360/admin/campaign/${encodeURIComponent(id)}/close`,
   release:id=>`/b800b7db-ad7b-445a-8226-3c5f9bfc820b/360/admin/campaign/${encodeURIComponent(id)}/release`
@@ -61,11 +61,12 @@ async function loadAdmin(){
   const v=$('adminView');
   v.innerHTML=`<div class="card admin-hero"><div><div class="eyebrow">Administración 360°</div><h1>Control del ciclo 360°</h1><p class="lead">Campaña ${CAMPAIGN}.</p><div class="admin-status" id="liveAdminStatus"><span class="status-pill">Cargando…</span></div></div><div class="admin-actions"><button class="btn outline" id="apiValidate">Actualizar</button></div></div><div class="admin-kpis" id="liveKpis"></div><section class="card" style="padding:22px"><div id="liveDistribution"></div></section><section class="card" style="padding:22px;margin-top:16px" id="adminLifecycle"></section>`;
   try{
-    const [d0,x0]=await Promise.all([
+    const [d0,x0,p0]=await Promise.all([
       api(`${EP.dashboard}?campaignId=${encodeURIComponent(CAMPAIGN)}`),
-      api(`${EP.distribution}?campaignId=${encodeURIComponent(CAMPAIGN)}`)
+      api(`${EP.distribution}?campaignId=${encodeURIComponent(CAMPAIGN)}`),
+      api(`${EP.participants}?campaignId=${encodeURIComponent(CAMPAIGN)}`).catch(()=>null)
     ]);
-    const d=unwrap(d0)||{},x=unwrap(x0)||{},k=d.kpis||d.metrics||d.summary||d;
+    const d=unwrap(d0)||{},x=unwrap(x0)||{},pd=unwrap(p0)||{},k=d.kpis||d.metrics||d.summary||d;
     const num=(...vs)=>{for(const v of vs){const n=Number(v);if(Number.isFinite(n))return n}return null};
     const state=String(
       pick(d,'campaignStatus','status','state')||
@@ -73,6 +74,9 @@ async function loadAdmin(){
       pick(k,'campaignStatus','status')||''
     ).toLowerCase();
     const rows=arr(x,'participants','distribution','items','rows');
+    const prows=arr(pd,'participants','items','rows','data');
+    const pmap={};
+    prows.forEach(r=>{const key=String(pick(r,'employeeNumber','idEmpleado','employeeId','participantId')||'');if(key)pmap[key]=r});
     const p=num(pick(k,'participants','participantCount','totalParticipants'),rows.length)||0;
     const t=num(pick(k,'assignedEvaluations','totalAssignments','assignments','assigned'))||rows.reduce((s,r)=>s+(num(pick(r,'assigned','assignedCount','emitted'))||0),0);
     const cdone=num(pick(k,'completedEvaluations','completed','completedAssignments','submitted'))||0;
@@ -89,15 +93,22 @@ async function loadAdmin(){
       <article class="card admin-kpi"><b>${t}</b><span>Asignadas</span></article>
       <article class="card admin-kpi"><b>${pct.toFixed(1)}%</b><span>Avance</span><small>${cdone} completadas · ${pending} pendientes</small></article>
       <article class="card admin-kpi"><b>${u}</b><span>Desbalance</span><small>${u===0?'4 emitidas / 4 recibidas':'Requiere revisión'}</small></article>`;
-    $('liveDistribution').innerHTML=`<div class="balance-row head"><span>Líder</span><span>Emitidas</span><span>Recibidas</span><span>Estado</span></div>${rows.length?rows.map(r=>{
-      const a=num(pick(r,'assigned','assignedCount','emitted'))||0,b=num(pick(r,'received','receivedCount'))||0,ok=a===4&&b===4;
-      return `<div class="balance-row"><strong>${esc(pick(r,'name','participantName','employeeName')||pick(r,'employeeNumber')||'Líder')}</strong><span>${a} / 4</span><span>${b} / 4</span><span class="${ok?'balance-ok':'balance-warn'}">${ok?'Correcto':'Revisar'}</span></div>`
+    $('liveDistribution').innerHTML=`<div style="margin-bottom:12px"><div class="eyebrow">Distribución y avance</div><div class="live360-mini">Asignadas/Recibidas valida el balance 4×4. Completadas/Pendientes muestra el avance real.</div></div><div class="balance-row head" style="grid-template-columns:2fr repeat(5,1fr)"><span>Participante</span><span>Asignadas</span><span>Recibidas</span><span>Completadas</span><span>Pendientes</span><span>Avance</span></div>${rows.length?rows.map(r=>{
+      const emp=String(pick(r,'employeeNumber','idEmpleado','employeeId')||''),pr=pmap[emp]||{},a=num(pick(r,'assigned','assignedCount','emitted'))||0,b=num(pick(r,'received','receivedCount'))||0;
+      const done=num(pick(pr,'completed','completedAssignments','completedEvaluations','submitted','done'),pick(r,'completed','completedAssignments'))||0;
+      const pend=num(pick(pr,'pending','pendingAssignments','pendingEvaluations'),pick(r,'pending','pendingAssignments')) ?? Math.max(0,a-done);
+      const rpct=a?Math.round(done/a*100):0,ok=a===4&&b===4;
+      return `<div class="balance-row" style="grid-template-columns:2fr repeat(5,1fr)"><strong>${esc(pick(r,'name','participantName','employeeName')||pick(pr,'name','participantName','employeeName')||emp||'Líder')}</strong><span>${a} / 4</span><span>${b} / 4</span><span>${done} / ${a||4}</span><span>${pend}</span><span><strong>${rpct}%</strong><small style="display:block;color:#6d7786">${ok?'Balance OK':'Revisar balance'}</small></span></div>`
     }).join(''):'<div class="live360-empty">El backend no devolvió el detalle de distribución.</div>'}`;
     const lifecycle=$('adminLifecycle');
     if(state==='released'){
-      lifecycle.innerHTML=`<div class="eyebrow">Ciclo de campaña</div><h3 style="margin:8px 0">Resultados liberados</h3><p class="lead" style="margin:0">La campaña ya está cerrada y liberada. No hay acciones de ciclo pendientes.</p>`;
+      lifecycle.innerHTML=pending>0
+        ? `<div class="eyebrow">Ciclo de campaña</div><h3 style="margin:8px 0">Resultados liberados con pendientes</h3><p class="lead">Hay ${pending} evaluaciones pendientes. La distribución está balanceada, pero el ejercicio no llegó al 100%. Si necesitas continuar capturando, reabre la campaña.</p><div class="admin-actions"><button class="btn outline" id="apiReopen">Reabrir campaña</button></div>`
+        : `<div class="eyebrow">Ciclo de campaña</div><h3 style="margin:8px 0">Resultados liberados</h3><p class="lead" style="margin:0">La campaña está completa y los resultados fueron liberados.</p>`;
     }else if(state==='closed'){
-      lifecycle.innerHTML=`<div class="eyebrow">Ciclo de campaña</div><h3 style="margin:8px 0">Campaña cerrada</h3><p class="lead">Las evaluaciones ya no reciben cambios. El siguiente paso disponible es liberar resultados.</p><div class="admin-actions"><button class="btn success" id="apiRelease">Liberar resultados</button></div>`;
+      lifecycle.innerHTML=pending>0
+        ? `<div class="eyebrow">Ciclo de campaña</div><h3 style="margin:8px 0">Campaña cerrada con pendientes</h3><p class="lead">Quedan ${pending} evaluaciones sin completar. Puedes reabrir para permitir que continúen o liberar resultados parciales.</p><div class="admin-actions"><button class="btn outline" id="apiReopen">Reabrir campaña</button><button class="btn success" id="apiRelease">Liberar resultados parciales</button></div>`
+        : `<div class="eyebrow">Ciclo de campaña</div><h3 style="margin:8px 0">Campaña cerrada</h3><p class="lead">Todas las evaluaciones están completas. El siguiente paso es liberar resultados.</p><div class="admin-actions"><button class="btn success" id="apiRelease">Liberar resultados</button></div>`;
     }else if(state==='active'){
       lifecycle.innerHTML=`<div class="eyebrow">Ciclo de campaña</div><h3 style="margin:8px 0">Campaña activa</h3><p class="lead">La campaña está recibiendo evaluaciones.</p><div class="admin-actions"><button class="btn danger" id="apiClose">Cerrar campaña</button></div>`;
     }else{
@@ -113,6 +124,7 @@ async function loadAdmin(){
   if($('apiActivate'))$('apiActivate').onclick=()=>adminAction(EP.activate(CAMPAIGN),'Activar campaña');
   if($('apiClose'))$('apiClose').onclick=()=>adminAction(EP.close(CAMPAIGN),'Cerrar campaña');
   if($('apiRelease'))$('apiRelease').onclick=()=>adminAction(EP.release(CAMPAIGN),'Liberar resultados');
+  if($('apiReopen'))$('apiReopen').onclick=()=>adminAction(EP.activate(CAMPAIGN),'Reabrir campaña');
 }
 async function adminAction(path,label){if(!confirm(`${label}?`))return;try{await api(path,{method:'POST',body:{}});toast(`${label}: correcto.`);await Promise.all([loadAdmin(),loadAssignments()])}catch(e){toast(`${label}: ${e.message}`)}}
 function hideAll(){['assignmentView','resultsView','adminView','survey'].forEach(id=>{if($(id))$(id).style.display='none'})}
